@@ -106,11 +106,13 @@ def get_trainer(hparams, train_batch, ckpt_path=None):
     if torch.cuda.is_available() and len(hparams.gpus) > 0:
         trainer_args.update({ "accelerator": "gpu", "devices": hparams.gpus,        # "strategy": "ddp", 
                               })
-    if torch.backends.mps.is_available() and len(hparams.gpus) > 0:
+    elif torch.backends.mps.is_available() and len(hparams.gpus) > 0:
         trainer_args.update({ "accelerator": "mps", "devices": hparams.gpus,        # "strategy": "ddp", 
                               })
+    else:
+        trainer_args.update({ "accelerator": "cpu", })
         
-    trainer = Trainer(**trainer_args)      # trainer = Trainer(**trainer_args)
+    trainer = Trainer(**trainer_args) 
     return trainer 
 
 class Validation_On_Start_Callback(Callback):
@@ -268,7 +270,7 @@ def extract_first_element(n):
     return n
 
 def get_tensor_width(hparams):
-    if hparams.model in ["Deep_Tensor_Net", "Deep_Tensor_Net_Lie", "Transformer"]:
+    if hparams.model in ["Deep_Tensor_Net"]:
         if getattr(hparams,'tensor_width',None) in [None, 0]:
             hparams.tensor_width = get_default_N(hparams.task_name, default_modulus = hparams.modulus) 
     if hparams.verbose:
@@ -318,7 +320,7 @@ def get_log_name(hparams): #, print_flag=False):
     if hparams.model == 'Transformer':
         model_str = hparams.model
     else:
-        assert hparams.model in ['Deep_Tensor_Net', 'Deep_Tensor_Net_Lie']
+        assert hparams.model in ['Deep_Tensor_Net']
         model_str = f"{hparams.decomposition_type}"
 
         if hasattr(hparams,'model_rank') and hparams.model_rank != 0:

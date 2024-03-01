@@ -97,7 +97,7 @@ class Deep_Tensor_Net(Base_Model):
         N, r, decomposition_type = kwargs.get("N", None), kwargs.get("r", None), 'FC'
         init_scale = kwargs.get("init_scale", 1)   
         r = r or (min(N) if isinstance(N,(tuple,list)) else N)
-        einsum_str, shared_idx0 = get_einsum_str(decomposition_type)
+        einsum_str, self.idx0 = get_einsum_str(decomposition_type)
         tensor_size_list, idx_appearance_dict, input_str_list, ext_indices, _ = get_tensor_size(N, r, einsum_str)
 
         self.bandwidth = kwargs.get("bandwidth", None)   
@@ -158,8 +158,16 @@ class Deep_Tensor_Net(Base_Model):
     
     @property
     def factor_list(self):
-
         return self.T_param_list
+        # A = self.T_param_list[self.idx0] 
+        # shared_param = [A]*(self.shared_embedding+1)
+
+        # factor_list = [T for T in self.T_param_list] # cloning list
+        # factor_list = factor_list[:self.idx0] + shared_param + factor_list[self.idx0+1:]
+        # if self.decomposition_type in ['FCTrans']:
+        #     factor_list[-1] = factor_list[-1].permute(0,2,1)
+
+        # return factor_list    
 
     @property
     def T_list_no_grad(self):

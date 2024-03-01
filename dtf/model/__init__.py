@@ -1,4 +1,3 @@
-from .transformer import Decoder as Transformer
 from .deep_tensor_net import Deep_Tensor_Net
 
 from argparse import ArgumentParser, Namespace

@@ -5,7 +5,7 @@ from pytorch_lightning import LightningModule
 import torch
 import numpy as np
 
-from dtf.model import get_model_parser, Deep_Tensor_Net, Transformer #, Simple_MLP, Simple_MLP2, Simple_CNN, Simple_Resnet
+from dtf.model import get_model_parser, Deep_Tensor_Net 
 from dtf.logging_module import Logging_Module
 from dtf.lr_scheduler import  Reduce_WeightDecayCoeff_OnPlateau
 from torch.optim import SGD
@@ -28,16 +28,7 @@ class LITmodel(LightningModule, Logging_Module):
         if isinstance(hparams,dict):
             hparams = Namespace(**hparams)
 
-        if hparams.model == 'Transformer':            # Make sure d_model, n_heads, and d_key are compatible   # hparams.d_key = hparams.d_model / hparams.n_heads
-            assert ( hparams.d_model % hparams.n_heads == 0 ), "n_heads=%s does not evenly divide d_model=%s" % ( hparams.n_heads,  hparams.d_model,)
-            model_class = Transformer
-            model_args = dict(  dim=hparams.d_model,
-                                num_layers=hparams.n_layers,
-                                num_heads=hparams.n_heads,
-                                seq_len=hparams.max_context_len,
-                                num_tokens=hparams.tensor_width,) #len(arithmetic_tokenizer), )
-
-        elif hparams.model in  ['Deep_Tensor_Net']:
+        if hparams.model in  ['Deep_Tensor_Net']:
             model_class = Deep_Tensor_Net
             model_args = dict(  N=hparams.tensor_width, 
                                 r=hparams.model_rank, 
