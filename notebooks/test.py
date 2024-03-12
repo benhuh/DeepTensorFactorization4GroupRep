@@ -53,52 +53,52 @@ def reorder_factor_list(factor_list, new_order, **kwargs):
     return torch.stack(factor_list_reordered)
     # plot_tensor_slices2(factor_list_reordered, idx_name_cols=['A','B','C'], **kwargs)
     #
-    def generate_figures(model, datamodule, save_name=None, new_order=None, XYZ_prev=None, normalize_1 = None, which_tensor=[0], show_num0=3, skip=2, show_steps = 4, t_init=0, plot_all_weights=False, normalize_later=False, ABC_or_A = 'A'):
+def generate_figures(model, datamodule, save_name=None, new_order=None, XYZ_prev=None, normalize_1 = None, which_tensor=[0], show_num0=3, skip=2, show_steps = 4, t_init=0, plot_all_weights=False, normalize_later=False, ABC_or_A = 'A'):
 
-        plot_all(model, skip_list = ['norm','grad_norm'], save_fig=True, save_name=save_name)
+    plot_all(model, skip_list = ['norm','grad_norm'], save_fig=True, save_name=save_name)
 
-        if plot_all_weights:
-            plot_netWeight_with_train_data(model, datamodule, save_name=save_name, M_lim=8, )
-            if ABC_or_A=='ABC':
-                plot_tensor_slices2(model.model.factor_list, idx_name_cols=['A','B','C'], save_name=save_name, save_name_extra='ABC_raw')
-            else:
-                plot_tensor_slices2(model.model.factor_list[0], idx_name_cols=['A'], M_lim=8, save_name=save_name, save_name_extra='A_raw')
-
-        # show_steps = 4 #5 # 6
-        show_num=[show_num0,skip*show_steps+1+t_init]
-
-        if save_name is not None and ('noReg' in save_name): # or 'L2' in save_name):
-            sparsity_type = None
-            sparsity_type_str = 'raw'
+    if plot_all_weights:
+        plot_netWeight_with_train_data(model, datamodule, save_name=save_name, M_lim=8, )
+        if ABC_or_A=='ABC':
+            plot_tensor_slices2(model.model.factor_list, idx_name_cols=['A','B','C'], save_name=save_name, save_name_extra='ABC_raw')
         else:
-            sparsity_type = 'block_diag'
-            sparsity_type_str = sparsity_type # or 'raw'
+            plot_tensor_slices2(model.model.factor_list[0], idx_name_cols=['A'], M_lim=8, save_name=save_name, save_name_extra='A_raw')
 
-            if plot_all_weights:
-                if ABC_or_A=='ABC':
-                    plot_tensor_slices2(normalize_factor_list(model.model.factor_list), idx_name_cols=['A','B','C'], save_name=save_name, save_name_extra='ABC_normalized')
-                else:
-                    plot_tensor_slices2(normalize_factor_list(model.model.factor_list)[0], idx_name_cols=['A'], M_lim=8, loss_type=sparsity_type, save_name=save_name, save_name_extra=f'A_normalized')
+    # show_steps = 4 #5 # 6
+    show_num=[show_num0,skip*show_steps+1+t_init]
 
-        XYZ, factor_list_sparse = get_regular_representation_XYZ(model, datamodule, plot_flag=False, XYZ=XYZ_prev, normalize_1=normalize_1, steps=1500, lr=1, loss_type=sparsity_type, idx_name_cols=['A','B','C'], )
+    if save_name is not None and ('noReg' in save_name): # or 'L2' in save_name):
+        sparsity_type = None
+        sparsity_type_str = 'raw'
+    else:
+        sparsity_type = 'block_diag'
+        sparsity_type_str = sparsity_type # or 'raw'
 
-        if new_order is not None:
-            assert XYZ_prev == None
-            factor_list_sparse = reorder_factor_list(factor_list_sparse, new_order)
-            XYZ = XYZ[:,:,new_order]
         if plot_all_weights:
             if ABC_or_A=='ABC':
-                if normalize_later:
-                    plot_tensor_slices2(normalize_factor_list(factor_list_sparse), idx_name_cols=['A','B','C'], loss_type=sparsity_type, save_name=save_name, save_name_extra=f'ABC_{sparsity_type_str}_normalized')
-                else:
-                    plot_tensor_slices2(factor_list_sparse, idx_name_cols=['A','B','C'], loss_type=sparsity_type, save_name=save_name, save_name_extra=f'ABC_{sparsity_type_str}')
+                plot_tensor_slices2(normalize_factor_list(model.model.factor_list), idx_name_cols=['A','B','C'], save_name=save_name, save_name_extra='ABC_normalized')
             else:
-                plot_tensor_slices2(factor_list_sparse[0], idx_name_cols=['A'], M_lim=8, loss_type=sparsity_type, save_name=save_name, save_name_extra=f'A_{sparsity_type_str}')
+                plot_tensor_slices2(normalize_factor_list(model.model.factor_list)[0], idx_name_cols=['A'], M_lim=8, loss_type=sparsity_type, save_name=save_name, save_name_extra=f'A_normalized')
 
-        A_hist_, XYZ_ = show_sparse_hist(model, datamodule, which_tensor=which_tensor, new_order=None, XYZ = XYZ, animate=False, skip=skip, t_init=t_init, show_num=show_num, M_lim=8, loss_type=sparsity_type, save_name=save_name, save_name_extra=f'A_hist_{sparsity_type_str}')
-        show_netWeight_hist(model, datamodule, hist_name='netW_hist', animate=False, skip=skip, t_init=t_init, show_num=show_num, M_lim=8, z_pow=0.6, save_name=save_name)
+    XYZ, factor_list_sparse = get_regular_representation_XYZ(model, datamodule, plot_flag=False, XYZ=XYZ_prev, normalize_1=normalize_1, steps=1500, lr=1, loss_type=sparsity_type, idx_name_cols=['A','B','C'], )
 
-        return XYZ
+    if new_order is not None:
+        assert XYZ_prev == None
+        factor_list_sparse = reorder_factor_list(factor_list_sparse, new_order)
+        XYZ = XYZ[:,:,new_order]
+    if plot_all_weights:
+        if ABC_or_A=='ABC':
+            if normalize_later:
+                plot_tensor_slices2(normalize_factor_list(factor_list_sparse), idx_name_cols=['A','B','C'], loss_type=sparsity_type, save_name=save_name, save_name_extra=f'ABC_{sparsity_type_str}_normalized')
+            else:
+                plot_tensor_slices2(factor_list_sparse, idx_name_cols=['A','B','C'], loss_type=sparsity_type, save_name=save_name, save_name_extra=f'ABC_{sparsity_type_str}')
+        else:
+            plot_tensor_slices2(factor_list_sparse[0], idx_name_cols=['A'], M_lim=8, loss_type=sparsity_type, save_name=save_name, save_name_extra=f'A_{sparsity_type_str}')
+
+    A_hist_, XYZ_ = show_sparse_hist(model, datamodule, which_tensor=which_tensor, new_order=None, XYZ = XYZ, animate=False, skip=skip, t_init=t_init, show_num=show_num, M_lim=8, loss_type=sparsity_type, save_name=save_name, save_name_extra=f'A_hist_{sparsity_type_str}')
+    show_netWeight_hist(model, datamodule, hist_name='netW_hist', animate=False, skip=skip, t_init=t_init, show_num=show_num, M_lim=8, z_pow=0.6, save_name=save_name)
+
+    return XYZ
 
 seed = 2
 train_frac = 61
@@ -108,3 +108,4 @@ task_name = 'binary/sym3_xy_vec'
 
 out, save_name_sym3_61_seed2 = train(task_name, train_frac, seed=seed,  val_check_interval=5, no_regularization=False)
 (model_sym3_61_seed2, datamodule_sym3_61_seed2, trainer) = out
+XYZ_sym3_61_seed2 = generate_figures(model_sym3_61_seed2, datamodule_sym3_61_seed2, save_name_sym3_61_seed2, skip=15, t_init=0, show_steps=5, new_order=[5,4,3,2,1,0], plot_all_weights=True, ABC_or_A = 'ABC')

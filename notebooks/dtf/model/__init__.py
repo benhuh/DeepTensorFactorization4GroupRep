@@ -1,5 +1,6 @@
 # from .transformer import Decoder as Transformer
-from .deep_tensor_net import Deep_Tensor_Net
+from .deep_tensor_net import Deep_Tensor_Net, Deep_Tensor_Net_conv
+
 
 from argparse import ArgumentParser, Namespace
 
