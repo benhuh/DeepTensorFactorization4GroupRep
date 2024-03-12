@@ -100,12 +100,6 @@ class Deep_Tensor_Net(Base_Model):
         einsum_str, shared_idx0 = get_einsum_str(decomposition_type)
         tensor_size_list, idx_appearance_dict, input_str_list, ext_indices, _ = get_tensor_size(N, r, einsum_str)
 
-        # Should have a trainable convolution filter here
-        # self.filter = nn.Parameter(init_scale * torch.randn(3, 3) / math.sqrt(2))
-        # (I actually think the filter is incorporate into W)
-        #
-        # Separate class: subclass of Deep_Tensor_Net(_w)
-
         self.bandwidth = kwargs.get("bandwidth", None)
 
         self.einsum_str = einsum_str
@@ -148,11 +142,14 @@ class Deep_Tensor_Net(Base_Model):
         return out, (W,)
 
     def read_from_Tensor(self, W, x):
+        # This is for tensor completion
         if x.dtype == torch.int64:  # x is tensor of indices
             out = self.index_select(W,x)
         else:
-            # here I should performing the convolution with the filter?
-            # out = torch.einsum('ijk,bi, (no batch dimension for w)j->bk',W,x1,w)
+            # this is for the vectorized version (x_1 is x, x_2 is y)
+            # add a learnable parameter w, then we have
+            # x = (tensor.squeeze(dim=1) for tensor in x.split(1,dim=1)) # not exactly
+            # out = torch.einsum('ijk,bi,bj->bk', W, x, self.w)
             x1,x2 = (tensor.squeeze(dim=1) for tensor in x.split(1,dim=1))
             out = torch.einsum('ijk,bi,bj->bk',W,x1,x2)
         return out
@@ -193,47 +190,3 @@ class Deep_Tensor_Net(Base_Model):
     def Custom_L2_loss(self): #mix_coeff=0.00):
         loss = compute_Custom_L2_all(self.factor_list, self.idx_appearance_dict)
         return loss
-
-class Deep_Tensor_Net_conv(Deep_Tensor_Net):
-    def __init__(self,  *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.initialize_weights(*args, **kwargs)
-
-    def initialize_weights(self, *args, **kwargs):
-        N, r, decomposition_type = kwargs.get("N", None), kwargs.get("r", None), 'FC'
-        init_scale = kwargs.get("init_scale", 1)
-        r = r or (min(N) if isinstance(N,(tuple,list)) else N)
-        einsum_str, shared_idx0 = get_einsum_str(decomposition_type)
-        tensor_size_list, idx_appearance_dict, input_str_list, ext_indices, _ = get_tensor_size(N, r, einsum_str)
-
-        self.bandwidth = kwargs.get("bandwidth", None)
-
-        self.einsum_str = einsum_str
-        self.idx_appearance_dict = idx_appearance_dict
-        self.input_str_list = input_str_list
-        self.ext_indices = ext_indices
-        self.decomposition_type=decomposition_type
-
-        self.layers = self.initialize_Tensors(tensor_size_list, init_scale) #, random_init)
-
-        self.N = N
-        W = self.net_Weight
-        self.W_shape_cum = get_W_shape_cum(W)
-        # self.store_init_weights()
-
-        # convolution weights
-        # self.conv_weight = nn.Parameter(init_scale * torch.randn(3, 3) / math.sqrt(2))
-        self.conv_weight = nn.Parameter(init_scale * torch.randn(6))
-
-    def read_from_Tensor(self, W, x):
-        if x.dtype == torch.int64:  # x is tensor of indices
-            out = self.index_select(W,x)
-        else:
-            # (this split is weird, data should have 3 tensors, x,y,z)
-            # import pdb; pdb.set_trace()
-            # x1,x2 = (tensor.squeeze(dim=1) for tensor in x.split(1,dim=1))
-            # out = torch.einsum('ijk,bi,bj->bk',W,x1,x2)
-            # here I should performing the convolution with the filter?
-            # out = torch.einsum('ijk,bi,j->bk',W,x1,self.conv_weight)
-            out = torch.einsum('ijk,bi,j->bk',W,x,self.conv_weight)
-        return out
