@@ -113,7 +113,9 @@ class LITmodel(LightningModule, Logging_Module):
 
         if not (self.optimizers() and self.trainer.lr_scheduler_configs):  # define new optimizers if not already set..  (if lr_scheduler_configs is None)
 
-            param_groups = [{'params': self.model.parameters()},]
+            param_group_1 = {'params': self.model.T_param_list}
+            param_group_2 = {'params': self.model.conv_weight, 'lr': 1 * lr, 'weight_decay': 0.1}
+            param_groups = [param_group_1, param_group_2]
 
             if self.hparams.optim == 'SGD':
                 optimizer = SGD(param_groups, momentum=self.hparams.betas[0], lr=lr, weight_decay=0)

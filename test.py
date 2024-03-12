@@ -15,7 +15,8 @@ def train(task_name, train_frac, seed=1, loss_fn = 'mse_loss', scheduler_thresho
     # Maybe have two optimizers?
     weight_decay = 0 if no_regularization else weight_decay
     weight_decay_min =  0
-    lr, momentum, lr_Lagrange, counter_threshold = (0.5/2, 0.5, 0.05*400, '30 90')  # SGD
+    # original lr = 0.5/2
+    lr, momentum, lr_Lagrange, counter_threshold = (0.015, 0.5, 0.05*400, '30 90')  # SGD
 
     save_name = get_save_name(task_name,train_frac,seed,no_regularization, add_str)
     extra_args_str = ''# None
@@ -108,5 +109,6 @@ task_name = 'binary/sym3_xy_vec'
 
 out, save_name_sym3_61_seed2 = train(task_name, train_frac, seed=seed,  val_check_interval=5, no_regularization=False)
 # generate figures doesn't really work
-# (model_sym3_61_seed2, datamodule_sym3_61_seed2, trainer) = out
-# XYZ_sym3_61_seed2 = generate_figures(model_sym3_61_seed2, datamodule_sym3_61_seed2, save_name_sym3_61_seed2, skip=15, t_init=0, show_steps=5, new_order=[5,4,3,2,1,0], plot_all_weights=True, ABC_or_A = 'ABC')
+(model_sym3_61_seed2, datamodule_sym3_61_seed2, trainer) = out
+import pdb; pdb.set_trace()
+XYZ_sym3_61_seed2 = generate_figures(model_sym3_61_seed2, datamodule_sym3_61_seed2, save_name_sym3_61_seed2, skip=15, t_init=0, show_steps=5, new_order=[5,4,3,2,1,0], plot_all_weights=True, ABC_or_A = 'ABC')

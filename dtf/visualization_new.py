@@ -10,7 +10,7 @@ import torch
 #     for T in ABC:
 #         T_ = []
 #         for t in T:
-#             T_.append(t.diag()) 
+#             T_.append(t.diag())
 #         ABC_new.append( torch.stack(T_))
 #     return ABC_new
 
@@ -19,7 +19,7 @@ plt.rcParams['savefig.transparent'] = True
 
 
 def check_group(datamodule, plot_flag=False): #anti=False):
-    M = datamodule.train_dataset.M.to_dense()+0      # cab 
+    M = datamodule.train_dataset.M.to_dense()+0      # cab
     M = M.permute(1,2,0)      # cab -> abc
 
     type_list = ['group', 'antigroup']
@@ -29,20 +29,20 @@ def check_group(datamodule, plot_flag=False): #anti=False):
         if type == 'group':
             M_ = M     #  abc
             A,B,C = M_.permute(0,2,1), M_.permute(0,2,1), M_
-        elif type == 'antigroup':   
+        elif type == 'antigroup':
             M_ = M.permute(2,1,0)    # abc -> cba
             A,B,C = M_.permute(0,2,1), M_.permute(0,2,1), M_
             # M_ = M     #  abc
             # A,B,C =  M.permute(2,1,0), M.permute(2,0,1), M.permute(2,0,1)            # A,B,C =  M_, M_.permute(0,2,1), M_.permute(0,2,1),
         else:
             raise ValueError
-        
+
         T = torch.einsum('aij, bjk, cki->abc', A,B,C)
         T = T/T.shape[0]
         err = M_ - T
         err_dict[type] = err.norm().item()
         if plot_flag:
-            plot_tensor_slices2(M_)    
+            plot_tensor_slices2(M_)
             plot_tensor_slices2(T)
     return err_dict
 
@@ -65,10 +65,10 @@ def normalize_factor_list(factor_list, ABC0 = None, normalize_0=True, normalize_
     A,B,C = factor_list
     if normalize_1:
         A0,B0,_ = factor_list[:,0] if len(factor_list.shape)==4 else factor_list[:,-1,0]  # 0th element and last time_step
-        # return [A0.inverse()@A,   B@B0.inverse(),  B0@C@A0]           # return [A0.T@A,   B@B0.T,  B0@C@A0]   
-        return [A0.T@A,   B@B0.T,  B0@C@A0]   
+        # return [A0.inverse()@A,   B@B0.inverse(),  B0@C@A0]           # return [A0.T@A,   B@B0.T,  B0@C@A0]
+        return [A0.T@A,   B@B0.T,  B0@C@A0]
     else:
-        return [A, B, C]   
+        return [A, B, C]
 
 
 def get_loss_fn(loss_type):
@@ -77,13 +77,13 @@ def get_loss_fn(loss_type):
         # if A_.shape[1] != M.shape[0]:
         #     q = M.shape[0] // A_.shape[1]
         #     M = M[::q]
-        return (A_-M).pow(2).mean() 
+        return (A_-M).pow(2).mean()
     def sparse_loss(A_,M):
-        loss = A_.abs().pow(1).mean()      # loss = ABC_.relu().pow(2).mean() * 1     
-        # loss += (1-A_).relu().pow(2).mean()  * 3   
+        loss = A_.abs().pow(1).mean()      # loss = ABC_.relu().pow(2).mean() * 1
+        # loss += (1-A_).relu().pow(2).mean()  * 3
         # loss += 10 * identity_loss(A_,M)
         return loss
-    
+
 
     from scipy.linalg import toeplitz
     def offdiag_loss(ABC_, log_scale=True):
@@ -104,12 +104,12 @@ def get_loss_fn(loss_type):
 
     def offdiagonal_loss(A_,M):
         return offdiag_loss(A_)
-    
+
     def identity_loss(A_,M):
         A_0 = A_[:,0]
         Id = torch.eye(A_.shape[-1], device=A_.device, dtype=A_.dtype)
-        return (A_0-Id).pow(2).mean() 
-    
+        return (A_0-Id).pow(2).mean()
+
     loss_dict = dict(regular=regular_loss, sparse=sparse_loss, block_diag=offdiagonal_loss, identity=identity_loss)
     return loss_dict[loss_type]
 
@@ -151,17 +151,17 @@ def optimize_V(ABC, V, M, lr, loss_type, steps=100, reg_coeff=0.1, fit_index=Non
     ABC_ = diagonalize(ABC, V, loss_type, fit_index=None)
     return V.detach(), ABC_.detach(), loss_all
 
-def get_regular_representation(model_or_factor_list, datamodule, V=None, plot_flag=False, steps=500, lr=1, loss_type='block_diag', trans_list=[0,1], anti_group=False, normalize_0=True, normalize_1=True, fit_index=None, show_error=False, idx_sort = None, idx_sign=None, **kwargs): 
+def get_regular_representation(model_or_factor_list, datamodule, V=None, plot_flag=False, steps=500, lr=1, loss_type='block_diag', trans_list=[0,1], anti_group=False, normalize_0=True, normalize_1=True, fit_index=None, show_error=False, idx_sort = None, idx_sign=None, **kwargs):
     M_factors = datamodule.train_dataset.factors
     if M_factors is not None:
         M = torch.stack(M_factors,dim=0)
     else:
         M = datamodule.train_dataset.M.permute(1,2,0).to_dense()+0   if hasattr(datamodule, 'train_dataset') else datamodule   # cab -> abc  (for addition / sym)
         if anti_group:
-            M = M.permute(2,1,0)    # abc -> cba        
+            M = M.permute(2,1,0)    # abc -> cba
 
     if isinstance(model_or_factor_list, (list,tuple, torch.Tensor)):
-        factor_list = model_or_factor_list 
+        factor_list = model_or_factor_list
     else:
         factor_list = model_or_factor_list.model.factor_list
 
@@ -185,18 +185,18 @@ def get_regular_representation(model_or_factor_list, datamodule, V=None, plot_fl
         pass
     else:
         # if loss_type != 'regular':  # if inv_or_trans == 'inv':
-        V = torch.eye(ABC.shape[-1]);    
+        V = torch.eye(ABC.shape[-1]);
         # else:
-        # V = torch.randn(ABC.shape[-2:]);    
+        # V = torch.randn(ABC.shape[-2:]);
 
         loss_all = []
         V, ABC_, loss_all = optimize_V(ABC, V, M, lr, loss_type, steps, loss_all=loss_all, fit_index=fit_index, idx_sort=idx_sort, idx_sign=idx_sign)
 
-        if show_error and loss_type == 'regular':   
-            plot_tensor_slices2(ABC_ - M)    
-        
+        if show_error and loss_type == 'regular':
+            plot_tensor_slices2(ABC_ - M)
+
         if plot_flag:
-            fig, ax = plt.subplots(1, 1, figsize=(3*1,2), sharex=False, sharey=False) 
+            fig, ax = plt.subplots(1, 1, figsize=(3*1,2), sharex=False, sharey=False)
             ax.semilogy(loss_all,'-');    plt.show()
         factor_list = [A_ for A_ in ABC_]
     for i in trans_list:
@@ -219,8 +219,8 @@ def optimize_XYZ(ABC, XYZ, M, lr, loss_type, steps=100, reg_coeff=0.0, fit_index
 
     for _ in range(steps):
         optim.zero_grad()
-        ABC_ = diagonalize_XYZ(ABC, XYZ, loss_type)      
-        loss = loss_fn(ABC_,M)  
+        ABC_ = diagonalize_XYZ(ABC, XYZ, loss_type)
+        loss = loss_fn(ABC_,M)
 
         if reg_coeff > 0:
             # import pdb; pdb.set_trace()
@@ -232,17 +232,17 @@ def optimize_XYZ(ABC, XYZ, M, lr, loss_type, steps=100, reg_coeff=0.0, fit_index
         loss_all.append(loss.item())
 
 
-    ABC_ = diagonalize_XYZ(ABC, XYZ, loss_type) 
+    ABC_ = diagonalize_XYZ(ABC, XYZ, loss_type)
     return XYZ.detach(), ABC_.detach(), loss_all
 
 
-def diagonalize_XYZ(ABC, XYZ, loss_type):  
-    X,Y,Z = XYZ 
+def diagonalize_XYZ(ABC, XYZ, loss_type):
+    X,Y,Z = XYZ
     if len(ABC.shape) == 4:
         pass
     elif len(ABC.shape) == 5:
         ABC = ABC.permute(1,0,2,3,4)
-    else: 
+    else:
         raise ValueError
     A,B,C = ABC
 
@@ -262,39 +262,39 @@ def diagonalize_XYZ(ABC, XYZ, loss_type):
 
 from pytorch_lightning import LightningDataModule
 
-def get_regular_representation_XYZ(model_or_factor_list, datamodule = None, normalize_1 = None, XYZ=None, plot_flag=False, steps=500, lr=1, loss_type='block_diag', trans_list=[0,1], anti_group=False, fit_index=None, **kwargs): 
-   
+def get_regular_representation_XYZ(model_or_factor_list, datamodule = None, normalize_1 = None, XYZ=None, plot_flag=False, steps=500, lr=1, loss_type='block_diag', trans_list=[0,1], anti_group=False, fit_index=None, **kwargs):
+
     if normalize_1 is None:
         normalize_1 = True if XYZ is None else False
 
     if isinstance(model_or_factor_list, (list,tuple, torch.Tensor)):
-        factor_list0 = model_or_factor_list 
+        factor_list0 = model_or_factor_list
     else:
         factor_list0 = model_or_factor_list.model.factor_list
-    factor_list = normalize_factor_list(factor_list0, normalize_0=True, normalize_1=normalize_1) 
-    
+    factor_list = normalize_factor_list(factor_list0, normalize_0=True, normalize_1=normalize_1)
+
     ABC = torch.stack(factor_list) #.detach()
 
     if datamodule is None:
         M_factors = None
     elif isinstance(datamodule, LightningDataModule) and hasattr(datamodule,'train_dataset'):
         M_factors = datamodule.train_dataset.factors
-    else: 
-        M_factors = datamodule 
+    else:
+        M_factors = datamodule
 
     if M_factors is not None:
         M = torch.stack(M_factors,dim=0)
     else:
         M = datamodule.train_dataset.M.permute(1,2,0).to_dense()+0   if hasattr(datamodule, 'train_dataset') else datamodule   # cab -> abc  (for addition / sym)
-        if M is not None: 
+        if M is not None:
             if anti_group:
-                M = M.permute(2,1,0)    # abc -> cba        
+                M = M.permute(2,1,0)    # abc -> cba
             M = M.unsqueeze(0).repeat(ABC.shape[0],1,1,1) #.clone()
             M_list = [M_ for M_ in M]
             for i in trans_list:
-                M_list[i] = M_list[i].permute(0,2,1)    
+                M_list[i] = M_list[i].permute(0,2,1)
             M = torch.stack(M_list)
-    
+
 
     if XYZ is not None:
         assert normalize_1 == False
@@ -302,17 +302,17 @@ def get_regular_representation_XYZ(model_or_factor_list, datamodule = None, norm
         factor_list = [A_ for A_ in ABC_]
     elif loss_type is None :
         pass
-    else: 
+    else:
         # assert normalize_1 == True
         loss_all = []
-        XYZ = torch.eye(ABC.shape[-1]).unsqueeze(0).repeat(ABC.shape[0],1,1)   
+        XYZ = torch.eye(ABC.shape[-1]).unsqueeze(0).repeat(ABC.shape[0],1,1)
         XYZ, ABC_, loss_all = optimize_XYZ(ABC, XYZ, M, lr, loss_type, steps, reg_coeff=0.1, fit_index=fit_index, loss_all=loss_all)
 
         if normalize_1:
             XYZ = get_effective_XYZ(XYZ, factor_list0)
 
         if plot_flag:
-            fig, axes = plt.subplots(1, 2, figsize=(3*2,2), sharex=False, sharey=False) 
+            fig, axes = plt.subplots(1, 2, figsize=(3*2,2), sharex=False, sharey=False)
             axes[0].semilogy(loss_all,'-');    plt.show()
 
         factor_list = [A_ for A_ in ABC_]
@@ -325,7 +325,7 @@ def get_regular_representation_XYZ(model_or_factor_list, datamodule = None, norm
     return XYZ.detach(), factor_list
 
 def get_effective_XYZ(XYZ, factor_list0):
-    A,B,C = normalize_factor_list(factor_list0, normalize_0=True, normalize_1=False) 
+    A,B,C = normalize_factor_list(factor_list0, normalize_0=True, normalize_1=False)
     X,Y,Z = XYZ
 
     X_ = A[0] @ X
@@ -339,23 +339,23 @@ def return_to_factors(ABC_, V_all):
     V_inv = V.inverse()
     ABC = V_inv.T @ ABC_ @ V_inv
     return ABC
-    
+
 def get_default_save_name(log_dir=None, add_str=None, save_fig=False, save_name=None):
-    
-    save_name_ = '' 
+
+    save_name_ = ''
     if save_name is not None:
         save_name_ = save_name + save_name_
     if add_str is not None:
         save_name_ += '_' + add_str
     if log_dir is not None:
         save_name_ += log_dir.split('mse_loss/')[-1].replace('/', '_').replace(' ', '_')
-    return save_name_ 
+    return save_name_
 
 from dtf.tensor_operations import tensor_prod
 def process_train_data_and_netW_hist(netW_hist, datamodule, idx_order): #'abc'):
     ab,c = datamodule.train_dataset.tensors #.permute(1,2,0)
-    train_data = torch.cat((ab,c.unsqueeze(1)),dim=1)
-    
+    # train_data = torch.cat((ab,c.unsqueeze(1)),dim=1)
+
     if idx_order=='abc':
         if len(netW_hist.shape) == 3:
             netW_hist = netW_hist.permute(1,2,0)  # cab -> abc
@@ -371,7 +371,7 @@ def process_train_data_and_netW_hist(netW_hist, datamodule, idx_order): #'abc'):
             netW_hist = netW_hist.permute(0,1,3,2)  # t cab -> t cba  # so that y-axis: a, x-axis: b
         else:
             raise ValueError
-        train_data = train_data[:,[2,0,1]]          # train_data = train_data[:,[2,0,1]]
+        # train_data = train_data[:,[2,0,1]]          # train_data = train_data[:,[2,0,1]]
         idx_name = ['T_{\cdot \cdot}']
 
     return netW_hist, train_data, idx_name
@@ -389,7 +389,7 @@ def show_netWeight_hist(model, datamodule, idx_order='cab', hist_name = 'netW_hi
     else:
         netW_hist = netW_hist.permute(1,0,2,3)  # t on the 1st idx.
         plot_tensor_slices2(netW_hist, idx_name_rows=idx_name, idx_name_cols=['t='], t0=t0, t_init=t_init, train_data=train_data, transpose = False, log_dir = log_dir, save_name_extra=save_name_extra, **kwargs)
-        # return netW_hist  
+        # return netW_hist
 
 def plot_netWeight_with_train_data(model, datamodule, idx_order='cab', **kwargs):
     W = model.model._net_Weight.detach()
@@ -402,7 +402,7 @@ import math
 def show_grad_hist(model, datamodule, idx_order='abc', **kwargs):
     t0=model.hparams.record_wg_hist
 
-    # ABC_hist = torch.stack(model.w_hist,dim=0).cpu() 
+    # ABC_hist = torch.stack(model.w_hist,dim=0).cpu()
     ABC_hist = show_sparse_hist(model, datamodule, t_ref = kwargs.get('t_ref',-1))[0]; ABC_hist = ABC_hist / (ABC_hist.shape[2])**(0.5)
 
     # ABC_hist.requires_grad = True
@@ -435,10 +435,10 @@ def show_grad_hist(model, datamodule, idx_order='abc', **kwargs):
     A_grad = torch.einsum('atbc, tbjk, tcki->atij',  netT_grad, B_hist, C_hist)
     plot_tensor_slices2(A_grad.detach(), idx_name_rows='A', idx_name_cols='t=', t0=t0, train_data=None, log_dir = model.hparams.log_dir, save_name_extra=save_name_extra, **kwargs)
     return netT_grad, A_grad
-    
+
 def show_sparse_hist(model, datamodule, datamodule_regular = None, which_tensor=[0,1,2], factor_list = None, t_ref=None, V=None, XYZ = None, loss_type = 'block_diag', animate=False, normalize_1=True, show_netWeight=True, new_order=None, fit_index = None, **kwargs): #, ABC0=None, lr=0.01, reference_step=-1, loss_type='regular', inv_or_trans='inv', plot_flag=False, anti_group=False, trans_list=[]):  #, trans_list=[0,1]
     if hasattr(model, 'trainer'):
-        print(model.hparams.log_dir)  
+        print(model.hparams.log_dir)
     factor_list = factor_list or model.model.factor_list  if t_ref is None  else model.w_hist[t_ref].detach().cpu()  #reference_step]
 
     if XYZ is None:
@@ -456,19 +456,19 @@ def show_sparse_hist(model, datamodule, datamodule_regular = None, which_tensor=
         normalize_1 = False
 
 
-    ABC_hist = torch.stack(model.w_hist,dim=0).cpu() 
+    ABC_hist = torch.stack(model.w_hist,dim=0).cpu()
     if XYZ is not None:
         ABC_hist_normalized = torch.stack(normalize_factor_list(ABC_hist, ABC0 = None, normalize_0=True, normalize_1=False), dim=1)
         if fit_index == None:
-            ABC_hist_ = diagonalize_XYZ(ABC_hist_normalized, XYZ, loss_type=loss_type)        
+            ABC_hist_ = diagonalize_XYZ(ABC_hist_normalized, XYZ, loss_type=loss_type)
         else:
             ABC_hist_ = diagonalize(ABC_hist_normalized, XYZ, loss_type=loss_type, fit_index=None)
-    else:   
+    else:
         ABC_hist_ = ABC_hist
         if new_order is not None:
             ABC_hist_ = reorder_tensor(ABC_hist_, new_order)
-        
-   
+
+
     idx_name_all = ['A','B','C']         # for cyclic group (addition)        # idx_name = ['e','(1,2)','(2,3)','(1,2,3)','(1,3,2)','(1,3)'] # for sym3_xy
     idx_name = [idx_name_all[i] for i in which_tensor]
 
@@ -499,14 +499,14 @@ def show_sparse_hist(model, datamodule, datamodule_regular = None, which_tensor=
             A_hist = ABC_hist_[:,which].permute(1,0,2,3)        # A_hist = ABC_hist_[:,which].permute(1,0,3,2)
             plot_tensor_slices2(A_hist, modify_dim=-1, idx_name_rows=idx_name_all[which] , idx_name_cols=['t='], t0=t0, train_data=None, log_dir = log_dir, save_name_extra = save_name_extra, **kwargs)
         return ABC_hist_, V
-    
+
 def show_eig_hist(model, which_tensor=[0,1,2], factor_list = None, t_ref=None, skip=1, panel_dim = 'elements', animate_flag=False, log_dir = None, save_fig=False, save_name=None, save_name_extra='', **kwargs):
     if hasattr(model, 'trainer'):
         print(model.hparams.log_dir)
-    
+
     factor_list = factor_list or model.model.factor_list  if t_ref is None  else model.w_hist[t_ref].detach().cpu()  #reference_step]
 
-    ABC_hist = torch.stack(model.w_hist,dim=0).cpu() 
+    ABC_hist = torch.stack(model.w_hist,dim=0).cpu()
     ABC_hist_normalized = torch.stack(normalize_factor_list(ABC_hist, ABC0 = None, normalize_0=True, normalize_1=True), dim=0)
     ABC_hist_ev, V_all = eig_diagonalize(ABC_hist_normalized) #, fit_index=None)
     # idx_name = ['A','B','C']         # for cyclic group (addition)        # idx_name = ['e','(1,2)','(2,3)','(1,2,3)','(1,3,2)','(1,3)'] # for sym3_xy
@@ -539,7 +539,7 @@ def show_eig_hist(model, which_tensor=[0,1,2], factor_list = None, t_ref=None, s
 
         if title_cols is not None:
             title = get_local_title(title_cols,0,i, axes.shape[0])
-            ax.set_title(title, y=1.0, pad=-14)  
+            ax.set_title(title, y=1.0, pad=-14)
 
         if not animate_flag:
             ax.set_prop_cycle('color',plt.cm.Spectral(np.linspace(0,1,len(A_hist_ev))))
@@ -549,13 +549,13 @@ def show_eig_hist(model, which_tensor=[0,1,2], factor_list = None, t_ref=None, s
             lines.append(line[0])
 
     if not animate_flag:
-        plt.show()    
+        plt.show()
         return A_hist_ev, V_all
 
     else:
         t_list = [(skip*t+0)*t0 for t in range(len(A_hist_ev))]
-        titles = ['t = {0:03d}'.format(t) for t in t_list]    
-        
+        titles = ['t = {0:03d}'.format(t) for t in t_list]
+
         def animate(t):
             fig.suptitle(titles[t], fontsize=12) #, y=0.0) #, pad=14)
             for i, line in enumerate(lines):
@@ -567,9 +567,9 @@ def show_eig_hist(model, which_tensor=[0,1,2], factor_list = None, t_ref=None, s
 
         add_str = panel_dim + '_' + save_name_extra
         log_dir = model.hparams.log_dir
-        save_name = get_default_save_name(log_dir, add_str, save_fig, save_name) 
+        save_name = get_default_save_name(log_dir, add_str, save_fig, save_name)
         if save_name is not None:
-            ani.save(f'{save_name}.mp4', 
+            ani.save(f'{save_name}.mp4',
                     savefig_kwargs={"transparent": True}, #, "facecolor": "none"},
                     )
 
@@ -584,7 +584,7 @@ def eig_diagonalize(ABC_hist):
         A_last = A_hist[-1]
 
         ev, eV = torch.linalg.eig(A_last[1])
-        ## Sort first by eigenvalue angles:    
+        ## Sort first by eigenvalue angles:
         theta1 = ev.log().imag
         _, sort_idx1 = ((theta1) % (2*np.pi)).sort()
         eV = eV[:,sort_idx1]
@@ -603,16 +603,16 @@ def get_fig_size(T_shape):
     elif len(T_shape)==4:
         fig_size = T_shape[:2]
     else:
-        raise ValueError 
+        raise ValueError
     return fig_size
 
 def get_titles_list(fig_size, idx_name_rows=None, idx_name_cols=None, skip=1, t0=1, t_init=0):
-    def helper(idx_names, L):        
+    def helper(idx_names, L):
         # idx_names = idx_name if isinstance(idx_name, (tuple,list)) else [idx_name]
         # if isinstance(idx_name, (tuple,list)):
         #     return [idx_name]
         # else:
-        # 
+        #
         if idx_names is None:
             titles = None
             titles_list = [titles]
@@ -632,9 +632,9 @@ def get_titles_list(fig_size, idx_name_rows=None, idx_name_cols=None, skip=1, t0
                         titles = [f'${idx_name[:-1]} = {i}$' for i in range(L)]
                 else:
                     titles = [f'${{{idx_name}}}_{{{i}}}$' for i in range(L)]  # titles = [f'{idx_name} = {i}' for i in range(L)]
-                titles_list.append(titles)     
+                titles_list.append(titles)
         return titles_list
-    
+
     N,M = fig_size
     title_cols = helper(idx_name_cols, M)
     title_rows = helper(idx_name_rows, N)
@@ -648,8 +648,8 @@ def get_local_title(title_list, i, j, n):
             title = f'{title_list[j]}'
         else:
             title = f'{title_list} = {j}'
-        return title        
-    
+        return title
+
     # import pdb; pdb.set_trace()
     if len(title_list)==1:
     # assert len(title_list)==1
@@ -670,12 +670,12 @@ def get_local_title(title_list, i, j, n):
     else:
         j_ = j + n*i
         title = get_title(title_list, j_)
-    # else: 
+    # else:
     #     title = get_title(title_list[i], j)
     return title
 
 
-def pre_process_tensor(T, show_num=[0], skip=1, skip_dim=1, t_init=0, z_pow=1, softmax_dim=None): 
+def pre_process_tensor(T, show_num=[0], skip=1, skip_dim=1, t_init=0, z_pow=1, softmax_dim=None):
     if isinstance(T, (list,tuple)):
         T = torch.stack(T)
 
@@ -684,10 +684,10 @@ def pre_process_tensor(T, show_num=[0], skip=1, skip_dim=1, t_init=0, z_pow=1, s
 
     if not isinstance(show_num, (list,tuple)):
         show_num = [show_num]
-    
+
     if len(show_num)==1:
         if show_num[0]!=0:
-            T = T[:show_num[0]]        
+            T = T[:show_num[0]]
     else:
         T = T[:show_num[0],:show_num[1]]
 
@@ -715,9 +715,9 @@ def reshape_T(T, modify_dim, M_lim):
         else:
             print(T.shape, fig_size)
             raise ValueError
-        T = T.view(new_shape)  
+        T = T.view(new_shape)
         return T, fig_size
-          
+
     if modify_dim<0:
         fig_size_orig = get_fig_size(T.shape[0:])
         fig_size = fig_size_orig
@@ -733,7 +733,7 @@ def reshape_T(T, modify_dim, M_lim):
         if wrap_around_flag:
             T, fig_size = helper(T)
         else:
-            fig_size = fig_size_orig 
+            fig_size = fig_size_orig
         return T, fig_size_orig, fig_size, wrap_around_flag
 
 def plot_tensor_slices2(T, fig = None, axes = None, ims = None, idx_name_rows=None, idx_name_cols=None, skip=1, t0=0, t_init=0, train_data=None, abc_dim=0, z_pow=1, show_num=[0], log_dir = None, save_fig=False, save_name=None, save_name_extra='', softmax_dim=None, modify_dim=0, M_lim = None, transpose=False, **kwargs): # , color_fix=True
@@ -753,14 +753,14 @@ def plot_tensor_slices2(T, fig = None, axes = None, ims = None, idx_name_rows=No
 
     save_fig = True if save_name is not None else save_fig
     add_str = save_name_extra
-    save_name = get_default_save_name(log_dir, add_str, save_fig, save_name) 
+    save_name = get_default_save_name(log_dir, add_str, save_fig, save_name)
     if save_name is not None:
         fig.savefig(f'{save_name}.pdf')
 
     # return fig, axes, ims
 
 def init_axes(fig_size, ims, T, abc, abc_dim=0, unsqueeze_dim=0, title_cols=None, title_rows=None, cmap='bwr', suptitle=None):
-    # cmap='seismic' 'viridis' 'PRGn' 'coolwarm'     
+    # cmap='seismic' 'viridis' 'PRGn' 'coolwarm'
 
     N, M = fig_size
     fig, axes = plt.subplots(N, M, figsize=(1.5*M,1.5*N), sharex=True, sharey=True, constrained_layout=True)  #figsize=(8*num_axes,5))
@@ -772,8 +772,8 @@ def init_axes(fig_size, ims, T, abc, abc_dim=0, unsqueeze_dim=0, title_cols=None
         T = T.unsqueeze(dim=unsqueeze_dim)                 #  T = [T]
     # T_max = T.abs().max()
     # v_range = [-T_max, T_max]     # v_range = [T.min(), T.max()]
-    v_range = [-1, 1]    
-    
+    v_range = [-1, 1]
+
     zeros = np.zeros(T.shape[-2:])
     ims = ims or np.empty(axes.shape, dtype=object)
 
@@ -783,14 +783,14 @@ def init_axes(fig_size, ims, T, abc, abc_dim=0, unsqueeze_dim=0, title_cols=None
 
     if abc is not None:
         if abc_dim==1:
-            a_max_flag = abc[:,0].max() > axes.shape[abc_dim] 
+            a_max_flag = abc[:,0].max() > axes.shape[abc_dim]
         else:
             a_max_flag = False #True
 
     for i, row in enumerate(axes):
         for j, ax in enumerate(row):
             assert ims[i,j] == None
-            im = ax.imshow(zeros, vmin=v_range[0], vmax=v_range[1], cmap=cmap) 
+            im = ax.imshow(zeros, vmin=v_range[0], vmax=v_range[1], cmap=cmap)
             ims[i,j]=im
 
             if abc is not None:
@@ -799,9 +799,9 @@ def init_axes(fig_size, ims, T, abc, abc_dim=0, unsqueeze_dim=0, title_cols=None
                 else:
                     i_ = i if abc_dim==0 else j
 
-                idx = abc[:,0] == i_ 
-                idx_not = abc[:,0] != i_ 
-                
+                idx = abc[:,0] == i_
+                idx_not = abc[:,0] != i_
+
                 if a_max_flag or i==0 or abc_dim==0:                 # if abc_dim==0 or i==0:
                     ax.plot(abc[idx,1],abc[idx,2], train_marker, color='k', markersize=markersize, alpha=0.9, fillstyle='none') #, edgecolors='r')
                     ax.plot(abc[idx_not,1],abc[idx_not,2], 'o', color='k', markersize=markersize, alpha=alpha_not, fillstyle='none') #, edgecolors='r')
@@ -816,10 +816,10 @@ def init_axes(fig_size, ims, T, abc, abc_dim=0, unsqueeze_dim=0, title_cols=None
 
             if title_cols is not None:
                 title = get_local_title(title_cols,i,j, axes.shape[1])
-                ax.set_title(title)   
+                ax.set_title(title)
 
     # cbar = fig.colorbar(ims[-1,-1], shrink=0.8)    # fig.tight_layout()    # fig.tight_layout(h_pad=0, w_pad=0)
-    
+
     return fig, axes, ims, T
 
 import matplotlib.animation as animation
@@ -831,10 +831,10 @@ def plot_tensor_slices_animation(T, idx_name_rows=None, idx_name_cols=None, skip
 
     fig, axes, ims, T = init_axes(fig_size, None,  T, train_data, abc_dim=1, unsqueeze_dim=1, title_cols=title_cols, title_rows=title_rows)
     t_list = [(skip*t+0)*t0 for t in range(len(T))]
-    titles = ['t = {0:03d}'.format(t) for t in t_list]    
+    titles = ['t = {0:03d}'.format(t) for t in t_list]
     # titles = [f't = {(skip*t+0)*t0}' for t in range(len(T))]
-    
-    
+
+
     def animate(t):
         fig.suptitle(titles[t], fontsize=12)
 
@@ -854,7 +854,7 @@ def plot_tensor_slices_animation(T, idx_name_rows=None, idx_name_cols=None, skip
     plt.close()
 
     add_str = save_name_extra
-    save_name = get_default_save_name(log_dir, add_str, save_fig, save_name) 
+    save_name = get_default_save_name(log_dir, add_str, save_fig, save_name)
     if save_name is not None:
         ani.save(f'{save_name}.mp4')
 

@@ -276,7 +276,7 @@ class ArithmeticDataset(TensorDataset):
         # xy = torch.stack((x, y),dim=1)
         # z = self.get_output(M,xy)
         # w = fixed weights
-        w = torch.Tensor(np.arange(6))
+        w = torch.Tensor(np.arange(6) / 100)
         w = torch.tile(w, (x.shape[0], 1))
         xy = torch.stack((x, w),dim=1)
         z = self.get_output(M,xy)

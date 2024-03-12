@@ -3,7 +3,7 @@ from pathlib import Path #, PurePath
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 import numpy as np
 import matplotlib.pyplot as plt
-# import os 
+# import os
 import yaml
 
 def get_events(log_dir, events_files, hparams_files, keep_dict=None):  #, version_limit=None  # Recursive!!
@@ -16,7 +16,7 @@ def get_events(log_dir, events_files, hparams_files, keep_dict=None):  #, versio
         #     # pass
         events_list = list(log_dir.glob('events.*'))
         hparams_list = list(log_dir.glob('hparams*'))
-        
+
         # assert len(events_list) == 1   # and assert len(hparams_list) == 1
         # events_list.sort() #key=os.path.getmtime)   # sort by the time of last modification
         h = hparams_list[0]
@@ -47,9 +47,9 @@ def get_events(log_dir, events_files, hparams_files, keep_dict=None):  #, versio
             # events_files += events_files_
             # hparams_files += hparams_files_
             # print(sub_log_dir,len(hparams_files_))
-            
+
     return None #events_files, hparams_files
-    
+
 def fields_to_tuple(fields):
     return [ tuple(f.__dict__.values())  for f in fields]
 
@@ -85,7 +85,7 @@ def get_key_val(tag):
             val = "/".join(splited[1:])
             key_val = key, (val, tag)
         else:
-            key_val = (None,)            # key_val = tag, ('-', tag) 
+            key_val = (None,)            # key_val = tag, ('-', tag)
     return key_val
 
 skip_tag_list_ICML = [ 'loss/reg'] #, 'loss/Lagrange']
@@ -119,16 +119,16 @@ def get_tags_dict(tag_list, skip_list=None, keep_list=None, plot_separately=Fals
     return tag_dict
 
 
-from dtf.training import get_print_str 
+from dtf.training import get_print_str
 from dtf.visualization_new import get_default_save_name
 
 def plot_scalars(log_dir, tags_dict=None, save_fig=False, save_name=None, skip_list=None, keep_list=None, ylims=None, plot_separately=False, decay_coeff=0, **kwargs):
 
     events_files, hparams_files = [], []
     get_events(log_dir, events_files, hparams_files)
-    
+
     if len(events_files)==0:
-        return 
+        return
     print(len(events_files))
     e = events_files[0]    # print(str(e))
 
@@ -146,7 +146,7 @@ def plot_scalars(log_dir, tags_dict=None, save_fig=False, save_name=None, skip_l
         num_panels = len(temp)
     else:
         num_panels = len(tags_dict.keys())
-    
+
     # print(num_panels, tags_dict)
     # print(e.scalars.Keys())
     if len(tags_dict)<2:
@@ -159,8 +159,8 @@ def plot_scalars(log_dir, tags_dict=None, save_fig=False, save_name=None, skip_l
 
     axes = axes if num_panels>1 else [axes]
     ylims = ylims or [None]*num_panels
-        
-    
+
+
     # for ax, (key,val_tags), ylim in zip(axes, tags_dict.items(), ylims):
     j=0
     for i, ((key,val_tags), ylim) in enumerate(zip(tags_dict.items(), ylims)):
@@ -262,7 +262,7 @@ def set_axis(ax, key, vals, ylim):
         # ax.set_ybound(lower=3e-5, upper=2e1)
         # ax.set_ybound(lower=1e-4, upper=1e-1)
         # ax.set_ybound(lower=1e-2, upper = 3e-1)
-        ax.set_ybound(lower=1e-3, upper=None)
+        ax.set_ybound(lower=None, upper=None)
     elif key == 'accuracy':
         ax.set_ybound(lower=0, upper=110)
     elif key.startswith('imbalance'):
@@ -272,7 +272,7 @@ def set_axis(ax, key, vals, ylim):
         # ax.set_ybound(lower=1e-2, upper=1e1)
 
     if ylim is not None:
-        ax.set_ybound(lower=ylim[0], upper=ylim[1])    
+        ax.set_ybound(lower=ylim[0], upper=ylim[1])
 
     if key.startswith('imbalance'):
         # ax.set_xlabel(r'iteration #: $t$')
@@ -294,10 +294,10 @@ def set_axis(ax, key, vals, ylim):
 #         load(base_path, db)
 #     return db
 
-# def load(base_dir, db=None, print_flag=True): 
+# def load(base_dir, db=None, print_flag=True):
 #     if print_flag:
 #         print(f'Loading {base_dir}')
-    
+
 #     log_dir_list = list(Path(base_dir).expanduser().glob('*'))
 #     log_dir_list.sort(key=os.path.getmtime)
 #     for log_dir in log_dir_list:
@@ -315,20 +315,20 @@ def set_axis(ax, key, vals, ylim):
 #                     # print(f'Loading {events_file}')
 #                     evt_acc = EventAccumulator(str(events_file), purge_orphaned_data=False)
 #                     evt_acc.Reload()
-                    
+
 #                     with open(str(config_file)) as file:
 #                         config = json.load(file)
 #                     # config['base_dir'] = str(base_dir)
 #                     # config['log_dir'] = str(log_dir)
-                    
+
 #                     config = {**config, **config['problem']}
 #                     config.pop('problem')
 #                     config['events'] = evt_acc
 
 #                     db.insert(config)
-#             else: # Recursive load 
+#             else: # Recursive load
 #                 load(log_dir, db, print_flag=True)
-#         except Exception as e: 
+#         except Exception as e:
 #             print(e)
 
 # # def unload(base_dir):
@@ -337,7 +337,7 @@ def set_axis(ax, key, vals, ylim):
 # #             continue
 # #         db.remove(where('log_dir') == str(log_dir))
 # #         print('Removing', log_dir)
-        
+
 # def get_values(run, tag):
 #     timestamps, steps, values = zip(*run['events'].Scalars(tag))
 #     return np.array(values)
@@ -364,24 +364,24 @@ def set_axis(ax, key, vals, ylim):
 # def save_config(config, path, filename, pop_list:list=None):
 #     os.makedirs(path, exist_ok=True)
 #     config_path = os.path.join(path, filename)
-    
+
 #     config_dict = vars(config).copy()
 #     config_dict['problem'] = vars(config_dict['problem'])
 #     if pop_list is not None: #len(pop_list)>0:
 #         for pop_key in pop_list:
 #             config_dict.pop(pop_key)
-                
+
 #     with open(config_path, 'a') as f:
 #         f.write(json.dumps(config_dict, sort_keys=True) + "\n")
-            
 
-# def get_base_path(config): 
+
+# def get_base_path(config):
 #     root_path = os.path.dirname(os.path.realpath(__file__))
-#     base_path = os.path.join(root_path, 
-#                              'results', 
+#     base_path = os.path.join(root_path,
+#                              'results',
 #                              config.problem.name,
 #                              config.experiment,
-#                              # dict2str(vars(config.problem)), 
+#                              # dict2str(vars(config.problem)),
 #                              )
 #     return base_path
 
@@ -391,7 +391,7 @@ def set_axis(ax, key, vals, ylim):
 #     for key, val in cfg_dict.items():
 #         if key == 'name' or val == None: # remove 'name' and any None entries
 #             cfg_dict_.pop(key)
-            
+
 #     config_str = json.dumps(cfg_dict_) #, sort_keys=True)
 #     config_str = re.sub(r"('|{|}| )", "", config_str)
 #     config_str = re.sub(r'"', '', config_str)
@@ -399,14 +399,14 @@ def set_axis(ax, key, vals, ylim):
 #     return config_str
 
 
-# def get_tensorboard_path(config, kwarg_dict): # **kwargs): 
-#     # config.set_params(**kwarg_dict)    
+# def get_tensorboard_path(config, kwarg_dict): # **kwargs):
+#     # config.set_params(**kwarg_dict)
 #     base_path = get_base_path(config)
-    
+
 #     add_path = dict2str(kwarg_dict)
-    
+
 # #     _wide = '_wide' if config.wide else '_narrow'
-# #     add_path = f'depth{config.depth}_wd{config.weight_decay}_init_scale{config.init_scale}' + _wide 
+# #     add_path = f'depth{config.depth}_wd{config.weight_decay}_init_scale{config.init_scale}' + _wide
 
 #     path = os.path.join(base_path, add_path)
 #     tensorboard_path, run_path = get_run_path(path, run_str = 'run')
@@ -432,13 +432,13 @@ def set_axis(ax, key, vals, ylim):
 
 #     fig, axes = plt.subplots(len(vals1), len(vals2), figsize=(20, 12) , sharex=True, sharey=True)
 #     fig.tight_layout(w_pad=3, h_pad=3)
-    
+
 #     for i, val1 in enumerate(vals1):
-#         params[key1] = val1 
+#         params[key1] = val1
 
 #         for j, val2 in enumerate(vals2):
 #             params[key2] = val2
-            
+
 #             ax = axes[i,j]
 #             runs = db.search(Query().fragment(params))
 #             # print(params)
@@ -448,10 +448,10 @@ def set_axis(ax, key, vals, ylim):
 #             # train_loss = get_values(run, 'loss/train')[-1]
 
 #             make_1_plot(runs, loss_or_svd, ax=ax)
-                
+
 #             # ax.set_title(f'{_wide}, depth{depth}, wd{wd}, loss: [{test_loss:.4f}, {train_loss:.4f}]')
 #             ax.set_title(params)
-#             # ax.set_xlim(left = 0, right = T) 
+#             # ax.set_xlim(left = 0, right = T)
 
 
 # def make_1_plot(db, loop_params, params, loss_or_svd=None):
@@ -459,9 +459,9 @@ def set_axis(ax, key, vals, ylim):
 
 #     fig, axes = plt.subplots(len(vals1),  figsize=(20, 12) , sharex=True, sharey=True)
 #     fig.tight_layout(w_pad=3, h_pad=3)
-    
+
 #     for i, val1 in enumerate(vals1):
-#         params[key1] = val1 
+#         params[key1] = val1
 
 #         ax = axes[i]
 #         runs = db.search(Query().fragment(params))
@@ -475,10 +475,10 @@ def set_axis(ax, key, vals, ylim):
 
 #         # ax.set_title(f'{_wide}, depth{depth}, wd{wd}, loss: [{test_loss:.4f}, {train_loss:.4f}]')
 #         ax.set_title(params)
-#         # ax.set_xlim(left = 0, right = T) 
+#         # ax.set_xlim(left = 0, right = T)
 
-            
-            
+
+
 # def make_0_plot(db, loss_or_svd=None, params=None, ax=None):
 #     if params is None:
 #         runs = db
@@ -490,9 +490,9 @@ def set_axis(ax, key, vals, ylim):
 #         ax = plt.axes()
 
 #     alpha=1
-    
+
 #     for run in runs:
-    
+
 #         # print(depth, dataset, lr, np.min(get_values(run, 'loss/test')))
 #     #     xs = get_steps(run, 'singular_values/0')
 #         xs = get_steps(run, 'loss/test')
@@ -509,4 +509,4 @@ def set_axis(ax, key, vals, ylim):
 #                     ax.semilogy(xs, get_values(run, f'singular_values/{k}'), color=plt.cm.summer(k / 10), alpha=alpha)
 #                 except:
 #                     pass
-#         ax.set_ylim(bottom = 1e-4, top = 100)    
+#         ax.set_ylim(bottom = 1e-4, top = 100)

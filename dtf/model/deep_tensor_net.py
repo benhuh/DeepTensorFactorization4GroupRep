@@ -237,3 +237,19 @@ class Deep_Tensor_Net_conv(Deep_Tensor_Net):
             # out = torch.einsum('ijk,bi,j->bk',W,x1,self.conv_weight)
             out = torch.einsum('ijk,bi,j->bk',W,x,self.conv_weight)
         return out
+
+    def evaluate(self, data, *args, **kwargs):
+        x, y = data
+        out, other_outputs = self.forward(x,  *args, **kwargs)
+        label = self.get_label(out, y)
+        if self.loss_fn == 'cross_entropy':
+            loss = F.cross_entropy(out, label, reduction= 'sum')
+        elif self.loss_fn in ['mse_loss', 'Lagrange']:
+            loss = F.mse_loss(out, label, reduction= 'sum') # / 2
+        elif self.loss_fn == 'mse_loss_complex':
+            loss = ((out-label).abs()**2).sum() # / 2
+        else:
+            raise ValueError(f'No loss function named {self.loss_fn}')
+
+        acc = self.get_accuracy(out, y)
+        return loss, acc, out, (other_outputs, x, out, label)
