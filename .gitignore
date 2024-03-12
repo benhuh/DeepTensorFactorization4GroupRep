@@ -1,0 +1,12 @@
+# Python
+**/__pycache__
+**/*.pyc
+
+# VS Code
+**/.vscode
+
+# Mac OS
+**/.DS_Store
+
+# Mounting artifacts
+**/._*
