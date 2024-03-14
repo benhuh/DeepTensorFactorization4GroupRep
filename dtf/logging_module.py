@@ -120,22 +120,12 @@ class Logging_Module():
         self.w_hist.append(w)
 
 
-    @staticmethod
-    def get_layer_name(name):
-        split = name.split('.')
-        layer_num = split[-2] if split[-1]=='weight' else split[-1]
-        name_ =   layer_num
-        # name_ = 'layer' + layer_num
-        return name_, layer_num
     
     def log_weight_norm(self): 
         logs = {}
         norm_2_sum = 0
         numel_sum = 0
         for name, param in self.named_parameters():
-            name_, layer_num = self.get_layer_name(name)
-            # get the l2 norm of the parameter
-            # norm = param.pow(2).mean().sqrt().item()  #torch.norm(param,2).item() / np.sqrt(param.numel())
             norm = torch.norm(param,2).item() 
             numel = param.numel()
             norm_2_sum += norm**2

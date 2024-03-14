@@ -57,14 +57,14 @@ def plot_all(model, skip_list = None, **kwargs):
 
     plot_scalars(model.hparams.log_dir, skip_list=skip_list, **kwargs) #, 'sing_val j', 'sing_val k'])#, save_name = "grokking_in_matrix_completion3")
     
-def run_exp(train_frac, extra_args_str = None, train_flag = True, **kwargs):  # , model0=None
+def run_exp(train_frac, extra_args_str = None, train_flag = True, M=None, **kwargs):  # , model0=None
     args = get_args(train_frac=train_frac, **kwargs)
     args_str = get_args_str(args) 
     if extra_args_str is not None:
         args_str += extra_args_str #' --use_different_logger'        # args_str += ' --record_wg_hist 1' 
     hparams = get_hparams(args_str.split(), default_kwargs=default_kwargs)
 
-    model, datamodule, trainer = get_model_pkg(hparams)
+    model, datamodule, trainer = get_model_pkg(hparams, M=M)
 
     if train_flag:
         trainer.fit(model=model, datamodule=datamodule) 

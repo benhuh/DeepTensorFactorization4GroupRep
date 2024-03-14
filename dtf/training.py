@@ -54,8 +54,8 @@ def get_model_pkg(ckptpath_or_hparams, M=None):
         os.makedirs(logger_dir, exist_ok=True)
 
     model.train_batch = train_batch
-    model.Target = datamodule.train_dataset.M.permute(1,2,0).to_dense() + 0.0
-    model.Mask = create_mask(datamodule)
+    # model.Target = datamodule.train_dataset.M.permute(1,2,0).to_dense() + 0.0
+    # model.Mask = create_mask(datamodule)
 
     return model, datamodule, trainer
 

@@ -6,18 +6,6 @@ import torch.nn.functional as F
 import math
 from dtf.tensor_operations import tensor_prod, compute_svd_all, compute_imbalance2, compute_Custom_L2_all, compute_Manual_L2_all, get_einsum_str, get_tensor_size
 
-
-class Tensor_Layer(nn.Module):
-    def __init__(self, siz, init_scale=1): #, random_init=True):  # , permute_dim=None
-        super().__init__()
-        assert len(siz)==3
-        self.base = init_scale * torch.randn(*siz) / math.sqrt(siz[0])          # self.base *= math.sqrt(siz[0])    
-        self.base = nn.Parameter(self.base)
-
-    @property
-    def tensor(self):
-        return self.base
-
 def get_W_shape_cum(W):
     w_shape=list(W.shape[1:])+[1]
     w_shape.reverse()
@@ -67,7 +55,7 @@ class Base_Model(nn.Module):
             raise ValueError(f'No loss function named {self.loss_fn}')
             
         acc = self.get_accuracy(out, y)
-        return loss, acc, out, (other_outputs, x, out, label)
+        return loss, acc, out, other_outputs
     
     def get_accuracy(self, out, y):
         if len(y.shape) == len(out.shape)-1:
@@ -86,12 +74,7 @@ class Base_Model(nn.Module):
 class Deep_Tensor_Net(Base_Model):
     def __init__(self,  *args, **kwargs): #init_val = 1) -> None:
         super().__init__(*args, **kwargs)
-        self.initialize_weights(*args, **kwargs)
-
-    def evaluate(self, data, *args, **kwargs):
-        loss, acc, out, (other_outputs, x, out, label)  = super().evaluate(data, *args, **kwargs)
-        return loss, acc, out, other_outputs      
-        
+        self.initialize_weights(*args, **kwargs)         
 
     def initialize_weights(self, *args, **kwargs):
         N, r, decomposition_type = kwargs.get("N", None), kwargs.get("r", None), 'FC'
@@ -113,7 +96,6 @@ class Deep_Tensor_Net(Base_Model):
         self.N = N
         W = self.net_Weight
         self.W_shape_cum = get_W_shape_cum(W)
-        # self.store_init_weights()
 
 
     def initialize_Tensors(self, tensor_size_list, init_scale0=1): 
@@ -122,15 +104,9 @@ class Deep_Tensor_Net(Base_Model):
 
         layers = []
         for siz in tensor_size_list:
-            layer =  Tensor_Layer(siz, init_scale=init_scale)
-            layers.append(layer)
+            layers.append(nn.Parameter(init_scale * torch.randn(*siz) / math.sqrt(siz[0])))
 
-        return nn.ModuleList(layers)
-
-
-    @property
-    def T_param_list(self):
-        return [layer.tensor for layer in self.layers] 
+        return nn.ParameterList(layers)
     
     def forward(self, x: Tensor, W = None, *args, **kwargs): # -> Tuple[Tensor, Union[Tensor, None], Union[Tensor, None]]:  
         if W is None:
@@ -155,20 +131,11 @@ class Deep_Tensor_Net(Base_Model):
         numel = math.prod(list(W.shape[-x.shape[1]:]))
         out = W.reshape(-1, numel).index_select(-1, index_1d)        # out = torch.index_select(W.view(-1, numel), -1, index_1d)
         return out.T
-    
+
     @property
     def factor_list(self):
-        return self.T_param_list
-        # A = self.T_param_list[self.idx0] 
-        # shared_param = [A]*(self.shared_embedding+1)
-
-        # factor_list = [T for T in self.T_param_list] # cloning list
-        # factor_list = factor_list[:self.idx0] + shared_param + factor_list[self.idx0+1:]
-        # if self.decomposition_type in ['FCTrans']:
-        #     factor_list[-1] = factor_list[-1].permute(0,2,1)
-
-        # return factor_list    
-
+        return [layer for layer in self.layers] 
+    
     @property
     def T_list_no_grad(self):
         return [T.detach() for T in self.factor_list]
@@ -184,13 +151,10 @@ class Deep_Tensor_Net(Base_Model):
     def get_imbalance2(self):
         return compute_imbalance2(self.T_list_no_grad)  
     
-
     def manual_L2_loss(self):
         return compute_Manual_L2_all(self.factor_list)
-    
 
-
-    def Custom_L2_loss(self): #mix_coeff=0.00):
+    def Custom_L2_loss(self): 
         loss = compute_Custom_L2_all(self.factor_list, self.idx_appearance_dict)   
         return loss
 
