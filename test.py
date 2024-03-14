@@ -4,35 +4,26 @@ import torch
 import matplotlib.pyplot as plt
 
 from dtf.train_helper_script import run_exp, plot_all
-
 from dtf.visualization_new import plot_tensor_slices2, show_netWeight_hist, show_sparse_hist, get_regular_representation, get_regular_representation_XYZ, normalize_factor_list, reorder_tensor, plot_netWeight_with_train_data
 
-def train(task_name, train_frac, seed=1, loss_fn = 'mse_loss', scheduler_threshold = 1e-5, L2_reg=False, gpus=None, val_check_interval=5, tensor_width=0, weight_decay=0.1, no_regularization = False, add_str=None, train_flag=True):
+def train(task_name, train_frac, seed=1, loss_fn = 'mse_loss', optim = 'SGD', lr = 0.015, scheduler_threshold = 1e-5, gpus=None, val_check_interval=5, tensor_width=0, weight_decay=0.1, add_str=None, train_flag=True):
     # Shouldn't we have a way to control here if it is a transformer or a DFN?
 
     # Ben said we should have weight decay for the filters, probably
     # don't add it here because it will also add weight decay to T.
     # Maybe have two optimizers?
-    weight_decay = 0 if no_regularization else weight_decay
-    weight_decay_min =  0
+    
     # original lr = 0.5/2
-    lr, momentum, lr_Lagrange, counter_threshold = (0.015, 0.5, 0.05*400, '30 90')  # SGD
+    momentum, counter_threshold = 0.5, '30 90'
 
     save_name = get_save_name(task_name,train_frac,seed,no_regularization, add_str)
-    extra_args_str = ''# None
-    if L2_reg:
-        extra_args_str += ' --decomposition_type FC_embed0 --manual_L2'
-        weight_decay = 1.5
-        save_name += '_L2'
-        scheduler_threshold = 100
-        counter_threshold = '250 100' #'300 50'
-
-    optim = 'SGD'
+    extra_args_str = ''
+    
     out = run_exp(train_frac=train_frac, extra_args_str = extra_args_str,
                        optim = optim, val_check_interval=val_check_interval, loss_fn = loss_fn,
                        task_name = task_name, tensor_width = tensor_width or 6,
                        lr = lr, momentum=momentum, weight_decay = weight_decay,
-                       scheduler_threshold = scheduler_threshold, weight_decay_min = weight_decay_min, lr_min = 1,
+                       scheduler_threshold = scheduler_threshold, weight_decay_min = 0, lr_min = 1,
                        random_seed=seed, record_wg_hist=10, grad_clip=1e-1,
                        counter_threshold = counter_threshold, gpus=gpus, train_flag=train_flag)
     return out, save_name
@@ -53,7 +44,7 @@ def reorder_factor_list(factor_list, new_order, **kwargs):
         factor_list_reordered.append(reorder_tensor(A, new_order).squeeze())
     return torch.stack(factor_list_reordered)
     # plot_tensor_slices2(factor_list_reordered, idx_name_cols=['A','B','C'], **kwargs)
-    #
+
 def generate_figures(model, datamodule, save_name=None, new_order=None, XYZ_prev=None, normalize_1 = None, which_tensor=[0], show_num0=3, skip=2, show_steps = 4, t_init=0, plot_all_weights=False, normalize_later=False, ABC_or_A = 'A'):
 
     plot_all(model, skip_list = ['norm','grad_norm'], save_fig=True, save_name=save_name)
@@ -107,8 +98,8 @@ task_name = 'binary/sym3_xy_vec'
 
 # change task name to '*_vec' to get a vectorized version
 
-out, save_name_sym3_61_seed2 = train(task_name, train_frac, seed=seed,  val_check_interval=5, no_regularization=False)
+out, save_name = train(task_name, train_frac, seed=seed,  val_check_interval=5, no_regularization=False)
 # generate figures doesn't really work
-(model_sym3_61_seed2, datamodule_sym3_61_seed2, trainer) = out
+(model, datamodule, trainer) = out
 import pdb; pdb.set_trace()
-XYZ_sym3_61_seed2 = generate_figures(model_sym3_61_seed2, datamodule_sym3_61_seed2, save_name_sym3_61_seed2, skip=15, t_init=0, show_steps=5, new_order=[5,4,3,2,1,0], plot_all_weights=True, ABC_or_A = 'ABC')
+XYZ = generate_figures(model, datamodule, save_name, skip=15, t_init=0, show_steps=5, plot_all_weights=True, ABC_or_A = 'ABC')
