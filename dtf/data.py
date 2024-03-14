@@ -133,8 +133,12 @@ class ArithmeticDataset(TensorDataset):
             assert data_type=='tuple'
             data = get_data_from_M(M)
             self.M = M
-        else:
+        if "binary/" in task: 
             data, self.M, self.factors = self.make_data(task, task_rank, operand_length, data_type) #, loss_type
+        elif "layer/" in task: 
+            data, self.M = self._get_layer_structure(task)
+        else:
+            raise ValueError(f"unsupported task: {task}")
 
         if vector_task:
             data = self._get_vectorized_data(self.M, total_batch=2.0)
@@ -260,6 +264,27 @@ class ArithmeticDataset(TensorDataset):
         else:
             M, coo = None, None
         return eqs, M, None #coo
+
+
+    def _get_layer_structure(self, task: str):
+        N = self.tensor_width#[0]
+        layer_name = task.split("layer/")[1] 
+        if layer_name == 'FC': # fully_connected
+            eqs=[]
+            for i in range(N):
+                for j in range(N):
+                    k = i*N + j
+                    # eqs.append((i,k,j))                    
+                    eqs.append(((i,j),k))
+        else:
+            raise ValueError
+                
+        coo = torch.tensor([(eq[1], *eq[0]) for eq in eqs])  
+        M = torch.sparse_coo_tensor(coo.T,torch.ones(coo.shape[0]).bool(), size=(N**2,N,N)) 
+        M = M.permute(1, 0, 2)
+        
+        data = get_data_from_M(M.to_dense()+0.0, shapes_start=1)
+        return data, M    
 
     def get_output(self, M,xy):
         x,y = xy[:,0], xy[:,1]
