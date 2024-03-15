@@ -151,10 +151,10 @@ class Deep_Tensor_Net(Base_Model):
     def get_imbalance2(self):
         return compute_imbalance2(self.T_list_no_grad)  
     
-    def manual_L2_loss(self):
+    def L2_regularizer(self):
         return compute_Manual_L2_all(self.factor_list)
 
-    def Custom_L2_loss(self): 
+    def HyperCube_regularizer(self): 
         loss = compute_Custom_L2_all(self.factor_list, self.idx_appearance_dict)   
         return loss
 

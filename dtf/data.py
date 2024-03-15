@@ -417,12 +417,12 @@ def calculate_batchsize(ds_size: int, batchsize_hint: int = 1, max_batch=None) -
 
 ###########################
 # create Mask
-# def create_mask(datamodule):    
-#     x = datamodule.train_dataset.tensors[0]
-#     M_shape = datamodule.train_dataset.M.shape
-#     Mask = torch.sparse_coo_tensor(x.T,torch.ones(x.shape[0]).bool(), size=M_shape[:2]).to_dense() + 0.0
-#     Mask = Mask.unsqueeze(dim=2).repeat(1,1,M_shape[2])
-#     return Mask
+def create_mask(datamodule):    
+    x = datamodule.train_dataset.tensors[0]
+    M_shape = datamodule.train_dataset.M.shape
+    Mask = torch.sparse_coo_tensor(x.T,torch.ones(x.shape[0]).bool(), size=M_shape[:2]).to_dense() + 0.0
+    Mask = Mask.unsqueeze(dim=2).repeat(1,1,M_shape[2])
+    return Mask
 
 
 class ArithmeticDataModule(LightningDataModule):

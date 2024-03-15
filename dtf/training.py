@@ -191,8 +191,7 @@ def add_model_specific_args(parser: ArgumentParser) -> ArgumentParser:
 
     parser.add_argument("--use_scale", choices=[None, 'log', 'square', 'sqrt', 'exp'], default=None)  #, 'p1_reg', 'max'          # parser.add_argument("--use_scale", dest="use_scale", action="store_true", default=False) # log-scale for weight decay scheduler
     
-    parser.add_argument("--custom_L2",  action="store_true", default=False)
-    parser.add_argument("--manual_L2",  action="store_true", default=False)
+    parser.add_argument("--regularizer", choices=['L2', 'HyperCube'], default='HyperCube')
     
     parser.add_argument("--log_imbalance", action="store_true", default=False) 
     parser.add_argument("--log_svd_max", type=int, default=10) 
@@ -251,7 +250,6 @@ def get_hparams(*args, default_kwargs=None, parser=None) -> Namespace:
     hparams = get_tensor_width(hparams)
 
     if hparams.model in ["Deep_Tensor_Net"]:
-        hparams.custom_L2 = not hparams.manual_L2
         hparams.decomposition_type = 'FC'
 
         hparams.tensor_width = extract_first_element(hparams.tensor_width)
@@ -331,10 +329,8 @@ def get_log_name(hparams): #, print_flag=False):
     assert len(hparams.betas)==1 or hparams.betas[-1]==0
     optim_str += f" momentum={str(hparams.betas[0])}"
 
-    if getattr(hparams,'custom_L2',False):
-        optim_str += " customL2"
-    if getattr(hparams,"manual_L2",False):
-        optim_str +=  " manual_L2"
+    optim_str += " "+hparams.regularizer
+
 
     optim_str += f"/lr={str(hparams.lr)}"
     if hparams.weight_decay != 0:

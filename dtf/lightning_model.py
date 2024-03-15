@@ -147,11 +147,10 @@ class LITmodel(LightningModule, Logging_Module):
         other_losses = {}        
         loss_reconst, acc, out, other_outputs = self.model.evaluate(data, train_or_test=train_or_test) 
 
-        if getattr(self.hparams, 'manual_L2', False):
-            other_losses['regularization'] = self.model.manual_L2_loss()
-
-        if getattr(self.hparams, 'custom_L2', False):
-            other_losses['regularization'] = self.model.Custom_L2_loss() 
+        if self.hparams.regularizer == 'HyperCube':
+            other_losses['regularization'] = self.model.HyperCube_regularizer()
+        elif self.hparams.regularizer == 'L2':
+            other_losses['regularization'] = self.model.L2_regularizer()
 
         info = {"loss/reconst":  loss_reconst.detach(),
                 "batch": batch,
