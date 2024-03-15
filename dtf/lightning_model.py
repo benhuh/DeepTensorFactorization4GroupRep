@@ -27,17 +27,9 @@ class LITmodel(LightningModule, Logging_Module):
 
         if isinstance(hparams,dict):
             hparams = Namespace(**hparams)
+        # hardcoded for now
         hparams.model = 'Deep_Tensor_Net_conv'
-        if hparams.model == 'Transformer':            # Make sure d_model, n_heads, and d_key are compatible   # hparams.d_key = hparams.d_model / hparams.n_heads
-            assert ( hparams.d_model % hparams.n_heads == 0 ), "n_heads=%s does not evenly divide d_model=%s" % ( hparams.n_heads,  hparams.d_model,)
-            model_class = Transformer
-            model_args = dict(  dim=hparams.d_model,
-                                num_layers=hparams.n_layers,
-                                num_heads=hparams.n_heads,
-                                seq_len=hparams.max_context_len,
-                                num_tokens=hparams.tensor_width,) #len(arithmetic_tokenizer), )
-
-        elif hparams.model in  ['Deep_Tensor_Net', 'Deep_Tensor_Net_conv']:
+        if hparams.model in  ['Deep_Tensor_Net', 'Deep_Tensor_Net_conv']:
             model_class = Deep_Tensor_Net if hparams.model == 'Deep_Tensor_Net' else Deep_Tensor_Net_conv
             model_args = dict(  N=hparams.tensor_width,
                                 r=hparams.model_rank,
@@ -107,7 +99,7 @@ class LITmodel(LightningModule, Logging_Module):
         if not (self.optimizers() and self.trainer.lr_scheduler_configs):  # define new optimizers if not already set..  (if lr_scheduler_configs is None)
 
             param_group_1 = {'params': self.model.T_param_list}
-            param_group_2 = {'params': self.model.conv_weight, 'lr': 1 * lr, 'weight_decay': 0.1}
+            param_group_2 = {'params': self.model.conv_weight, 'lr': 1 * lr}# , 'weight_decay': self.hparams.conv_weight_decay}
             param_groups = [param_group_1, param_group_2]
 
             if self.hparams.optim == 'SGD':
@@ -184,7 +176,8 @@ class LITmodel(LightningModule, Logging_Module):
 
         if 'regularization' in other_losses.keys():
             reg_loss = self.current_weight_decay * other_losses['regularization']
-            loss_train = loss_reconst + reg_loss
+            reg_loss_1 = self.hparams.conv_weight_decay * self.current_wd_coeff * (self.model.conv_weight.norm(2) ** 2)
+            loss_train = loss_reconst + reg_loss + reg_loss_1
             info["loss/reg"] = reg_loss.item() / self.model._net_Weight.numel()
         else:
             loss_train = loss_reconst

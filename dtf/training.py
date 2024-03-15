@@ -186,6 +186,7 @@ def add_model_specific_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument("--counter_threshold", nargs='+', type=int, default=[1,200])
 
     parser.add_argument("--weight_decay", type=float, default=0.1)
+    parser.add_argument("--conv_weight_decay", type=float, default=0.1)
     parser.add_argument("--weight_decay_min", type=float, default=0)
 
     parser.add_argument("--use_scale", choices=[None, 'log', 'square', 'sqrt', 'exp'], default=None)  #, 'p1_reg', 'max'          # parser.add_argument("--use_scale", dest="use_scale", action="store_true", default=False) # log-scale for weight decay scheduler

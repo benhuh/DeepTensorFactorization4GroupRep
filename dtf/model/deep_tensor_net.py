@@ -11,6 +11,7 @@ class Tensor_Layer(nn.Module):
     def __init__(self, siz, init_scale=1): #, random_init=True):  # , permute_dim=None
         super().__init__()
         assert len(siz)==3
+        # import pdb; pdb.set_trace()
         self.base = init_scale * torch.randn(*siz) / math.sqrt(siz[0])          # self.base *= math.sqrt(siz[0])
         self.base = nn.Parameter(self.base)
 
@@ -102,7 +103,7 @@ class Deep_Tensor_Net(Base_Model):
         tensor_size_list, idx_appearance_dict, input_str_list, ext_indices, _ = get_tensor_size(N, r, einsum_str)
         if self.layer_type == 'FC': # Hack for now
             tensor_size_list[0] = [N**2, N, N]
-        
+
         # Should have a trainable convolution filter here
         # self.filter = nn.Parameter(init_scale * torch.randn(3, 3) / math.sqrt(2))
         # (I actually think the filter is incorporate into W)
