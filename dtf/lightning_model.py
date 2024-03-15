@@ -38,19 +38,13 @@ class LITmodel(LightningModule, Logging_Module):
                                 seq_len=hparams.max_context_len,
                                 num_tokens=hparams.tensor_width,) #len(arithmetic_tokenizer), )
 
-        elif hparams.model in  ['Deep_Tensor_Net']:
-            model_class = Deep_Tensor_Net
+        elif hparams.model in  ['Deep_Tensor_Net', 'Deep_Tensor_Net_conv']:
+            model_class = Deep_Tensor_Net if hparams.model == 'Deep_Tensor_Net' else Deep_Tensor_Net_conv
             model_args = dict(  N=hparams.tensor_width,
                                 r=hparams.model_rank,
                                 decomposition_type=hparams.decomposition_type,
                                 init_scale=hparams.init_scale,
-                                )
-        elif hparams.model in  ['Deep_Tensor_Net_conv']:
-            model_class = Deep_Tensor_Net_conv
-            model_args = dict(  N=hparams.tensor_width,
-                                r=hparams.model_rank,
-                                decomposition_type=hparams.decomposition_type,
-                                init_scale=hparams.init_scale,
+                                layer_type = hparams.layer_type,
                                 )
         else:
             raise ValueError

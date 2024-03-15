@@ -30,7 +30,6 @@ def get_args(**kwargs):
                         tensor_width = 0,
                         task_rank = 0,
                         model_rank = 0, #40
-                        bandwidth = None,
                         init_scale = 1 ,
                         weight_decay = 0.1, #/5 #*4
                         weight_decay_min = 0,

@@ -340,8 +340,6 @@ def get_log_name(hparams): #, print_flag=False):
         optim_str += f" wd={str(hparams.weight_decay)}"
     if hasattr(hparams,'init_scale') and hparams.init_scale != 1:
         optim_str += f" init={hparams.init_scale}"
-    if hasattr(hparams,'bandwidth') and hparams.bandwidth != None:
-        optim_str += f" init={hparams.bandwidth}"
 
     loss_fn_str = hparams.loss_fn
 

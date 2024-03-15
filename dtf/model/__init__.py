@@ -11,6 +11,7 @@ def get_model_parser(model_name) -> ArgumentParser:
         parser.add_argument("--model_rank", type=int, default=0 , nargs='+')
         parser.add_argument("--decomposition_type", type=str, default='FC_embed0_customL2')
         parser.add_argument("--init_scale", type=float, default=1.0)
+        parser.add_argument("--layer_type", type=str, default=None, choices=["FC"]) 
 
     else:
         raise NotImplementedError

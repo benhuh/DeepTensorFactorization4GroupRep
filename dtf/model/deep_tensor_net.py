@@ -31,6 +31,7 @@ class Base_Model(nn.Module):
     def __init__(self, *args, **kwargs):  #  loss_fn='mse_loss'):
         super().__init__()
         self.loss_fn = kwargs.get("loss_fn", 'mse_loss')
+        self.layer_type = kwargs.get("layer_type", None)
 
     def get_label(self, out, y):
         if self.loss_fn == 'cross_entropy':
@@ -99,14 +100,14 @@ class Deep_Tensor_Net(Base_Model):
         r = r or (min(N) if isinstance(N,(tuple,list)) else N)
         einsum_str, shared_idx0 = get_einsum_str(decomposition_type)
         tensor_size_list, idx_appearance_dict, input_str_list, ext_indices, _ = get_tensor_size(N, r, einsum_str)
-
+        if self.layer_type == 'FC': # Hack for now
+            tensor_size_list[0] = [N**2, N, N]
+        
         # Should have a trainable convolution filter here
         # self.filter = nn.Parameter(init_scale * torch.randn(3, 3) / math.sqrt(2))
         # (I actually think the filter is incorporate into W)
         #
         # Separate class: subclass of Deep_Tensor_Net(_w)
-
-        self.bandwidth = kwargs.get("bandwidth", None)
 
         self.einsum_str = einsum_str
         self.idx_appearance_dict = idx_appearance_dict
@@ -198,29 +199,7 @@ class Deep_Tensor_Net_conv(Deep_Tensor_Net):
     def __init__(self,  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.initialize_weights(*args, **kwargs)
-
-    def initialize_weights(self, *args, **kwargs):
-        N, r, decomposition_type = kwargs.get("N", None), kwargs.get("r", None), 'FC'
         init_scale = kwargs.get("init_scale", 1)
-        r = r or (min(N) if isinstance(N,(tuple,list)) else N)
-        einsum_str, shared_idx0 = get_einsum_str(decomposition_type)
-        tensor_size_list, idx_appearance_dict, input_str_list, ext_indices, _ = get_tensor_size(N, r, einsum_str)
-
-        self.bandwidth = kwargs.get("bandwidth", None)
-
-        self.einsum_str = einsum_str
-        self.idx_appearance_dict = idx_appearance_dict
-        self.input_str_list = input_str_list
-        self.ext_indices = ext_indices
-        self.decomposition_type=decomposition_type
-
-        self.layers = self.initialize_Tensors(tensor_size_list, init_scale) #, random_init)
-
-        self.N = N
-        W = self.net_Weight
-        self.W_shape_cum = get_W_shape_cum(W)
-        # self.store_init_weights()
-
         # convolution weights
         # self.conv_weight = nn.Parameter(init_scale * torch.randn(3, 3) / math.sqrt(2))
         self.conv_weight = nn.Parameter(init_scale * torch.randn(6))
@@ -237,19 +216,3 @@ class Deep_Tensor_Net_conv(Deep_Tensor_Net):
             # out = torch.einsum('ijk,bi,j->bk',W,x1,self.conv_weight)
             out = torch.einsum('ijk,bi,j->bk',W,x,self.conv_weight)
         return out
-
-    def evaluate(self, data, *args, **kwargs):
-        x, y = data
-        out, other_outputs = self.forward(x,  *args, **kwargs)
-        label = self.get_label(out, y)
-        if self.loss_fn == 'cross_entropy':
-            loss = F.cross_entropy(out, label, reduction= 'sum')
-        elif self.loss_fn in ['mse_loss', 'Lagrange']:
-            loss = F.mse_loss(out, label, reduction= 'sum') # / 2
-        elif self.loss_fn == 'mse_loss_complex':
-            loss = ((out-label).abs()**2).sum() # / 2
-        else:
-            raise ValueError(f'No loss function named {self.loss_fn}')
-
-        acc = self.get_accuracy(out, y)
-        return loss, acc, out, (other_outputs, x, out, label)

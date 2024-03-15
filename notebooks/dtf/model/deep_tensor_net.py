@@ -106,8 +106,6 @@ class Deep_Tensor_Net(Base_Model):
         #
         # Separate class: subclass of Deep_Tensor_Net(_w)
 
-        self.bandwidth = kwargs.get("bandwidth", None)
-
         self.einsum_str = einsum_str
         self.idx_appearance_dict = idx_appearance_dict
         self.input_str_list = input_str_list
@@ -197,38 +195,15 @@ class Deep_Tensor_Net(Base_Model):
 class Deep_Tensor_Net_conv(Deep_Tensor_Net):
     def __init__(self,  *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.initialize_weights(*args, **kwargs)
-
-    def initialize_weights(self, *args, **kwargs):
-        N, r, decomposition_type = kwargs.get("N", None), kwargs.get("r", None), 'FC'
         init_scale = kwargs.get("init_scale", 1)
-        r = r or (min(N) if isinstance(N,(tuple,list)) else N)
-        einsum_str, shared_idx0 = get_einsum_str(decomposition_type)
-        tensor_size_list, idx_appearance_dict, input_str_list, ext_indices, _ = get_tensor_size(N, r, einsum_str)
-
-        self.bandwidth = kwargs.get("bandwidth", None)
-
-        self.einsum_str = einsum_str
-        self.idx_appearance_dict = idx_appearance_dict
-        self.input_str_list = input_str_list
-        self.ext_indices = ext_indices
-        self.decomposition_type=decomposition_type
-
-        self.layers = self.initialize_Tensors(tensor_size_list, init_scale) #, random_init)
-
-        self.N = N
-        W = self.net_Weight
-        self.W_shape_cum = get_W_shape_cum(W)
-        # self.store_init_weights()
 
         # convolution weights
-        # self.conv_weight = nn.Parameter(init_scale * torch.randn(3, 3) / math.sqrt(2))
         self.conv_weight = nn.Parameter(init_scale * torch.randn(6))
 
     def read_from_Tensor(self, W, x):
-        if x.dtype == torch.int64:  # x is tensor of indices
-            out = self.index_select(W,x)
-        else:
+        # if x.dtype == torch.int64:  # x is tensor of indices
+        #     out = self.index_select(W,x)
+        # else:
             # (this split is weird, data should have 3 tensors, x,y,z)
             # import pdb; pdb.set_trace()
             # x1,x2 = (tensor.squeeze(dim=1) for tensor in x.split(1,dim=1))
@@ -236,4 +211,4 @@ class Deep_Tensor_Net_conv(Deep_Tensor_Net):
             # here I should performing the convolution with the filter?
             # out = torch.einsum('ijk,bi,j->bk',W,x1,self.conv_weight)
             out = torch.einsum('ijk,bi,j->bk',W,x,self.conv_weight)
-        return out
+            return out
