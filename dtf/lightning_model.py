@@ -27,7 +27,6 @@ class LITmodel(LightningModule, Logging_Module):
 
         if isinstance(hparams,dict):
             hparams = Namespace(**hparams)
-        # hardcode for now
         hparams.model = 'Deep_Tensor_Net_conv'
         if hparams.model == 'Transformer':            # Make sure d_model, n_heads, and d_key are compatible   # hparams.d_key = hparams.d_model / hparams.n_heads
             assert ( hparams.d_model % hparams.n_heads == 0 ), "n_heads=%s does not evenly divide d_model=%s" % ( hparams.n_heads,  hparams.d_model,)

@@ -82,7 +82,7 @@ def get_trainer(hparams, train_batch, ckpt_path=None):
     earlystop_callback = [earlystop_callback_dict[key] for key in [*set(hparams.earlystop)]] # set removes duplicates
 
     trainer_args = {
-        "max_steps": 3000,#hparams.max_steps,
+        "max_steps": 4000,#hparams.max_steps,
         "max_epochs": int(1e8),
         "val_check_interval": hparams.val_check_interval,
         "check_val_every_n_epoch": None,
@@ -159,7 +159,7 @@ def add_model_specific_args(parser: ArgumentParser) -> ArgumentParser:
     :returns: the argument parser with the command line arguments added
                 for this class.
     """
-    parser.add_argument("--model", type=str, default="Deep_Tensor_Net") #"Transformer")
+    parser.add_argument("--model", type=str, default="Deep_Tensor_Net", choices=["Deep_Tensor_Net", "Deep_Tensor_Net_conv"])
 
     parser.add_argument("--optim", choices=["SGD"], default="SGD")
     parser.add_argument("--loss_fn", choices=["mse_loss"], default="mse_loss")
