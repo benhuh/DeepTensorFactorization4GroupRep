@@ -2,9 +2,35 @@
 
 import torch
 import matplotlib.pyplot as plt
+import numpy as np
 
 from dtf.train_helper_script import run_exp, plot_all
 from dtf.visualization_new import plot_tensor_slices2, show_netWeight_hist, show_sparse_hist, get_regular_representation, get_regular_representation_XYZ, normalize_factor_list, reorder_tensor, plot_netWeight_with_train_data
+
+def check_model(model, datamodule):
+    """
+    Checks if the learned convolution weight matches the one used for training
+    (in terms of products with the tensor, has basis ambiguity).
+
+    Parameters
+    ----------
+    model: PyTorch model
+        The model to be checked.
+    datamodule: PyTorch datamodule
+        The datamodule used for training the model.
+
+    Returns
+    -------
+    trained: PyTorch tensor
+        The convolution weight recovered by training.
+    desired: PyTorch tensor
+        The true convolution weight.
+    """
+    trained = torch.einsum('ijk,j->ik', model.model.net_Weight, model.model.conv_weight)
+
+    w_data = torch.Tensor(np.arange(6) / 100)
+    desired = torch.einsum('ijk,j->ik', datamodule.train_dataset.M.to_dense() + 0.0, w_data)
+    return trained, desired
 
 def train(task_name, train_frac, seed=1, loss_fn = 'mse_loss', optim = 'SGD', lr = 0.275, scheduler_threshold = 1e-4, gpus=None, val_check_interval=5, tensor_width=0, weight_decay=0.1, add_str=None, train_flag=True):
     # Shouldn't we have a way to control here if it is a transformer or a DFN?
@@ -98,5 +124,6 @@ task_name = 'binary/sym3_xy_vec'
 
 out, save_name = train(task_name, train_frac, seed=seed, val_check_interval=5)
 (model, datamodule, trainer) = out
+trained, desired = check_model(model, datamodule)
 import pdb; pdb.set_trace()
 # XYZ = generate_figures(model, datamodule, save_name, skip=15, t_init=0, show_steps=5, plot_all_weights=True, ABC_or_A = 'ABC')
