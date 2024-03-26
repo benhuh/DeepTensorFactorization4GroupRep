@@ -76,13 +76,13 @@ def get_trainer(hparams, train_batch, ckpt_path=None):
         "accuracy/val":
             EarlyStopping(monitor="accuracy/val", patience=int(2000/hparams.val_check_interval), min_delta = 1e-4, mode="max", stopping_threshold=99, check_on_train_epoch_end=False),
         "loss/train":
-            EarlyStopping(monitor="loss/train", min_delta = -1, mode="min", stopping_threshold= 1e-7, divergence_threshold=1e2, check_on_train_epoch_end=True),
+            EarlyStopping(monitor="loss/train", min_delta = -1, mode="min", stopping_threshold= 1e-9, divergence_threshold=1e2, check_on_train_epoch_end=True),
     }
 
     earlystop_callback = [earlystop_callback_dict[key] for key in [*set(hparams.earlystop)]] # set removes duplicates
 
     trainer_args = {
-        "max_steps": 5000,#hparams.max_steps,
+        "max_steps": 6000,#hparams.max_steps,
         "max_epochs": int(1e8),
         "val_check_interval": hparams.val_check_interval,
         "check_val_every_n_epoch": None,

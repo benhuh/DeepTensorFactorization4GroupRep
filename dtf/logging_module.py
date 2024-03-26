@@ -128,6 +128,25 @@ class Logging_Module():
         # name_ = 'layer' + layer_num
         return name_, layer_num
 
+
+    def log_grads(self):
+        logs={}
+        grad_norm_sum, grad_T_norm_sum, num_layers, layers = 0,0,0,0
+
+        for name, param in self.named_parameters():
+            name_, layer_num = self.get_layer_name(name)
+            grad_norm = (param.grad ).norm()
+            if grad_norm == torch.inf or torch.isnan(grad_norm):
+                import pdb; pdb.set_trace()
+
+            grad_norm_sum += grad_norm.item() #**2
+            num_layers += 1
+            logs[f"grad_norm/{name_}"] = grad_norm
+
+        logs["grad_norm/mean"] = grad_norm_sum / num_layers #(grad_norm_sum / numel_sum)**0.5
+
+        return logs
+
     def log_weight_norm(self):
         logs = {}
         norm_2_sum = 0
@@ -140,6 +159,7 @@ class Logging_Module():
             numel = param.numel()
             norm_2_sum += norm**2
             numel_sum += numel
+            logs[f"norm/{name_}"] = norm
 
         logs["norm/mean"] = (norm_2_sum/numel_sum)**0.5
         logs["norm/NetW"] = self.model._net_Weight.norm().item()  / np.sqrt(self.model._net_Weight.numel())

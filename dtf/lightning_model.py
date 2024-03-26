@@ -120,6 +120,9 @@ class LITmodel(LightningModule, Logging_Module):
     def on_after_backward(self, *args):
 
         logs={}
+        # if self.hparams.log_grads:
+        if True:
+            logs.update(self.log_grads())
         for k, v in logs.items():
             self.log(k, v)
 

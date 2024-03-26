@@ -43,7 +43,7 @@ def get_args(**kwargs):
                         record_wg_hist = 0,
                         val_check_interval = 10,
                         random_seed = 0,
-                        log_svd_max = 12,
+                        log_svd_max = 40,
                         step_max = 2500,
                         )
     default_args.update(kwargs)
@@ -64,7 +64,7 @@ def run_exp(train_frac, extra_args_str = None, train_flag = True, **kwargs):  # 
 
     hparams = get_hparams(args_str.split(), default_kwargs=default_kwargs)
     # hardcode for now
-    hparams.conv_weight_decay = 0.1
+    hparams.conv_weight_decay = 0.0
     # import pdb; pdb.set_trace()
     model, datamodule, trainer = get_model_pkg(hparams)
 
