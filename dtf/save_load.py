@@ -3,6 +3,10 @@ from pathlib import Path #, PurePath
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_theme()
+sns.set_context('paper')
+
 # import os
 import yaml
 
