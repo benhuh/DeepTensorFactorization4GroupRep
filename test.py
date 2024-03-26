@@ -32,7 +32,7 @@ def check_model(model, datamodule):
     desired = torch.einsum('ijk,j->ik', datamodule.train_dataset.M.to_dense() + 0.0, w_data)
     return trained, desired
 
-def train(task_name, train_frac, seed=1, loss_fn = 'mse_loss', optim = 'SGD', lr = 0.275, scheduler_threshold = 1e-4, gpus=None, val_check_interval=5, tensor_width=0, weight_decay=0.1, add_str=None, train_flag=True):
+def train(task_name, train_frac, seed=1, loss_fn = 'mse_loss', optim = 'SGD', lr = 0.2875, scheduler_threshold = 1e-4, gpus=None, val_check_interval=5, tensor_width=0, weight_decay=0.1, add_str=None, train_flag=True):
     # Shouldn't we have a way to control here if it is a transformer or a DFN?
 
     # Ben said we should have weight decay for the filters, probably

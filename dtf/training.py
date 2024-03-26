@@ -82,7 +82,7 @@ def get_trainer(hparams, train_batch, ckpt_path=None):
     earlystop_callback = [earlystop_callback_dict[key] for key in [*set(hparams.earlystop)]] # set removes duplicates
 
     trainer_args = {
-        "max_steps": 4000,#hparams.max_steps,
+        "max_steps": 5000,#hparams.max_steps,
         "max_epochs": int(1e8),
         "val_check_interval": hparams.val_check_interval,
         "check_val_every_n_epoch": None,
@@ -91,7 +91,7 @@ def get_trainer(hparams, train_batch, ckpt_path=None):
         "logger": logger,
         "log_every_n_steps": 1,
         "callbacks": [TQDMProgressBar(refresh_rate=1, enable_val=hparams.enable_val_progress),
-                    #   All_Monitor(logging_interval='step'),
+                      # All_Monitor(logging_interval='step'),
                       Validation_On_Start_Callback(),
                       *earlystop_callback ] ,
         "gradient_clip_algorithm": "norm",

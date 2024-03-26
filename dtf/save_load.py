@@ -153,7 +153,6 @@ def plot_scalars(log_dir, tags_dict=None, save_fig=False, save_name=None, skip_l
         raise ValueError
 
     # figsize=(3.*num_panels, 3) #figsize=(8*num_panels, 5)
-    import pdb; pdb.set_trace()
     figsize=(2.2*num_panels, 2.5) #figsize=(8*num_panels, 5)
     fig, axes = plt.subplots(1, num_panels, figsize=figsize, sharex=True, sharey=False)
     fig.tight_layout(w_pad=3, h_pad=3)

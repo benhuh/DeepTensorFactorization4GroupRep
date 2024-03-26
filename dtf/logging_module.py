@@ -5,7 +5,7 @@ import torch
 from dtf.model import Deep_Tensor_Net
 
 
-PROG_BAR_LIST = ["loss/train", "loss/val"] 
+PROG_BAR_LIST = ["loss/train", "loss/val"]
 
 class Logging_Module():
 
@@ -21,7 +21,7 @@ class Logging_Module():
         total_batch = sum(self.aggregate_info(info_dicts,"batch", pop=True))
         loss = torch.stack(self.aggregate_info(info_dicts,"loss/reconst", pop=True)).sum() / total_batch
         accuracy = torch.stack(self.aggregate_info(info_dicts,"accuracy", pop=True)).sum() / total_batch if "accuracy" in info_dicts[0].keys() else None
-        return loss, accuracy        
+        return loss, accuracy
 
     def log_epoch_end(self, info_dicts, train_or_test):
 
@@ -40,7 +40,7 @@ class Logging_Module():
             logs['scheduler/counter'] = self.scheduler_counter
 
         elif train_or_test == 'val':
-            
+
             if isinstance(self.model,(Deep_Tensor_Net)):
                 logs.update(self.log_weight_norm())
                 logs.update({'orth_loss/all': compute_AA(self.model.factor_list, factor_norm=logs["norm/mean"])[1]**2})
@@ -56,19 +56,19 @@ class Logging_Module():
 
         for k, v in logs.items():
             self.log(k, v, prog_bar=True if k in PROG_BAR_LIST + self.hparams.scheduler_criterion else False)
-            
+
         ## log values before_annealing weight decay        # skip logging singular values
         self.last_logs.update({k:v for k, v in logs.items() if not k.startswith('sing')}) #(logs)
-            
+
         if self.scheduler_counter == 0:
             for key in ['accuracy/train', 'accuracy/val', 'loss/total', 'loss/train', 'loss/val', 'grad_norm/mean', 'imbalance/mean', 'imbalance2/mean', 'erank/mean', 'orth_loss/all', 'orth_loss/indiv']:
                 self.last_logs[key+'/before_anneal'] = self.last_logs.get(key,0.0)
             self.last_logs['time'+'/before_anneal'] = self.current_epoch - self.hparams.counter_threshold[0]
-        
+
         self.last_logs['_accuracy/val'] = 100 - self.last_logs.get('accuracy/val',0.0)
         return logs
-    
-    def log_svd_factors(self, max_num=10, weight_norm=None): 
+
+    def log_svd_factors(self, max_num=10, weight_norm=None):
         with torch.no_grad():
             logs={}
             svd_dict = self.model.get_svd()
@@ -76,13 +76,13 @@ class Logging_Module():
             if len(svd_dict)>0:
                 for idx, err in svd_dict.items():
                     for j, s in enumerate(err['sig']):
-                        if j<max_num: 
+                        if j<max_num:
                             logs[f"singular_val/{idx}/{j}"] = s.item()
-                            
-            return logs 
-        
 
-    def log_imbalance2(self, max_num=10, svd=True, weight_norm=None): 
+            return logs
+
+
+    def log_imbalance2(self, max_num=10, svd=True, weight_norm=None):
         with torch.no_grad():
             logs={}
             imbalance2 = self.model.get_imbalance2()
@@ -92,7 +92,7 @@ class Logging_Module():
                 numel_sum = 0
 
                 for idx, err in imbalance2.items():
-                    norm = err.norm().item() 
+                    norm = err.norm().item()
                     numel = err.numel()
                     norm_2_sum += norm**2
                     numel_sum += numel
@@ -102,8 +102,8 @@ class Logging_Module():
                 if weight_norm is not None:
                     logs[f"imbalance2/mean"] /= weight_norm ** 4
 
-            return logs 
-    
+            return logs
+
 
 
     def record_param_grad(self):
@@ -127,8 +127,8 @@ class Logging_Module():
         name_ =   layer_num
         # name_ = 'layer' + layer_num
         return name_, layer_num
-    
-    def log_weight_norm(self): 
+
+    def log_weight_norm(self):
         logs = {}
         norm_2_sum = 0
         numel_sum = 0
@@ -136,20 +136,21 @@ class Logging_Module():
             name_, layer_num = self.get_layer_name(name)
             # get the l2 norm of the parameter
             # norm = param.pow(2).mean().sqrt().item()  #torch.norm(param,2).item() / np.sqrt(param.numel())
-            norm = torch.norm(param,2).item() 
+            norm = torch.norm(param,2).item()
             numel = param.numel()
             norm_2_sum += norm**2
             numel_sum += numel
 
         logs["norm/mean"] = (norm_2_sum/numel_sum)**0.5
         logs["norm/NetW"] = self.model._net_Weight.norm().item()  / np.sqrt(self.model._net_Weight.numel())
-        return logs  
-        
+        logs["norm/convW"] = self.model.conv_weight.norm().item()  / np.sqrt(self.model.conv_weight.numel())
+        return logs
+
 def check_all_equal(list):
     return all(i == list[0] for i in list)
-     
 
-    
+
+
 def compute_AA(factor_list_opt, factor_norm, imshow=False):
     AA_all = []
     for A in factor_list_opt:
@@ -175,7 +176,7 @@ def compute_individual_AA(factor_list_opt, factor_norm):
         for A_ in A:
             orth_loss = orthogonal_loss(A_)
             orth_loss_all.append(orth_loss) # normalize by diag_mean
-    
+
     orth_loss_indiv_norm = torch.stack(orth_loss_all).norm() / sum([A.numel() for A in orth_loss_all])**0.5
 
     return orth_loss_indiv_norm / factor_norm **2
