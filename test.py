@@ -6,6 +6,7 @@ import numpy as np
 
 from dtf.train_helper_script import run_exp, plot_all
 from dtf.visualization_new import plot_tensor_slices2, show_netWeight_hist, show_sparse_hist, get_regular_representation, get_regular_representation_XYZ, normalize_factor_list, reorder_tensor, plot_netWeight_with_train_data
+from dtf.visualization_new import optimize_T
 
 def check_model(model, datamodule):
     """
@@ -125,5 +126,8 @@ task_name = 'binary/sym3_xy_vec'
 out, save_name = train(task_name, train_frac, seed=seed, val_check_interval=5)
 (model, datamodule, trainer) = out
 trained, desired = check_model(model, datamodule)
+
+V = torch.eye(model.model.net_Weight.shape[-1])#.unsqueeze(0).repeat(model.model.net_Weight.shape[0],1,1)
+opt_V, opt_T, losses = optimize_T(model.model.net_Weight.detach(), V, datamodule.train_dataset.M.to_dense() + 0.0, lr=1e-2, reg_coeff=0.001, loss_type='regular', steps=1000)
 import pdb; pdb.set_trace()
 # XYZ = generate_figures(model, datamodule, save_name, skip=15, t_init=0, show_steps=5, plot_all_weights=True, ABC_or_A = 'ABC')

@@ -127,6 +127,40 @@ def diagonalize(ABC, V, loss_type, fit_index=None):  #fit_index=[0,1,2]
         ABC_ = V.inverse() @ ABC @ V        # ABC_ = torch.linalg.pinv(V) @ ABC @ V
     return ABC_
 
+def diagonalize_T(T, V, loss_type, fit_index=None):  #fit_index=[0,1,2]
+
+    if fit_index is not None:        # fit_index = [0,1,2]
+        T = T[fit_index]
+
+    if T.dtype != V.dtype:
+        T = T.to(V.dtype)
+
+    if loss_type=='regular':  # if inv_or_trans=='trans':
+        T_ = torch.einsum('ijk,jl->ilk', T, V.T)
+    else:
+        T_ = torch.einsum('ijk,jl->ilk', T, V.inverse())
+    return T_
+
+def optimize_T(T, V, M, lr, loss_type, steps=100, reg_coeff=0.1, fit_index=None, loss_all=None, idx_sort=None, idx_sign=None):
+    loss_all = loss_all or []
+    V = torch.nn.Parameter(V)
+    optim = torch.optim.SGD([V], lr=lr, momentum=0.9)
+    loss_fn = get_loss_fn(loss_type)
+
+    for _ in range(steps):
+        optim.zero_grad()
+        T_ = diagonalize_T(T, V, loss_type, fit_index=fit_index)             # ABC_ = diagonalize(ABC, V, loss_type='sparse', fit_index=fit_index)
+        loss = loss_fn(T_,M) + reg_coeff * (V.T @ V - torch.eye(V.shape[0]).to(V.device)).pow(2).mean()
+        loss.backward()
+        optim.step()
+        loss_all.append(loss.item())
+
+    if idx_sort is not None:
+        V = V[:,idx_sort]
+
+    T_ = diagonalize(T, V, loss_type, fit_index=None)
+    return V.detach(), T_.detach(), loss_all
+
 def optimize_V(ABC, V, M, lr, loss_type, steps=100, reg_coeff=0.1, fit_index=None, loss_all=None, idx_sort=None, idx_sign=None):
     loss_all = loss_all or []
     V = torch.nn.Parameter(V)
