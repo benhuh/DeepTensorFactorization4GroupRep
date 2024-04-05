@@ -135,19 +135,7 @@ trained, desired = check_model(model, datamodule)
 
 V = torch.eye(model.model.net_Weight.shape[-1])#.unsqueeze(0).repeat(model.model.net_Weight.shape[0],1,1)
 model_weight = model.model.net_Weight.detach()
-
-# first, rotate M and try to recover
-gaus = torch.randn(6, 6)
-svd = torch.linalg.svd(gaus)
-orth = svd[0] @ svd[2]
-print(orth.T @ orth) # sanity check
 train_M = datamodule.train_dataset.M.to_dense() + 0.0
-rot_train_M = torch.einsum('ijk,jl->ilk', train_M, orth)
-opt_V, opt_T, losses = optimize_T(rot_train_M / (rot_train_M.norm()) * train_M.norm(), V, train_M, lr=1e-2, reg_coeff=0.1, loss_type='regular', steps=1000)
-print((opt_V - orth).norm() ** 2) # works
-
-# we should also be able to do this with linear algebra
-opt_V_e = optimize_T(rot_train_M / (rot_train_M.norm()) * train_M.norm(), V, train_M, lr=1e-2, reg_coeff=0.1, loss_type='exact', steps=1000)
-print((opt_V_e - orth).norm() ** 2) # doesn't work
+opt_V, opt_T, losses = optimize_T(model_weight / (model_weight.norm()) * train_M.norm(), V, train_M, lr=1e-2, reg_coeff=0.1, loss_type='regular', steps=1000)
 import pdb; pdb.set_trace()
 # XYZ = generate_figures(model, datamodule, save_name, skip=15, t_init=0, show_steps=5, plot_all_weights=True, ABC_or_A = 'ABC')

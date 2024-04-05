@@ -142,6 +142,9 @@ def diagonalize_T(T, V, loss_type, fit_index=None):  #fit_index=[0,1,2]
     return T_
 
 def optimize_T(T, V, M, lr, loss_type, steps=100, reg_coeff=0.1, fit_index=None, loss_all=None, idx_sort=None, idx_sign=None):
+    if loss_type == 'exact':
+        V = M[:, 0, :] @ torch.linalg.pinv(T[:, 0, :]) # should be the same for every slice
+        return V
     loss_all = loss_all or []
     V = torch.nn.Parameter(V)
     optim = torch.optim.SGD([V], lr=lr, momentum=0.9)
@@ -158,7 +161,7 @@ def optimize_T(T, V, M, lr, loss_type, steps=100, reg_coeff=0.1, fit_index=None,
     if idx_sort is not None:
         V = V[:,idx_sort]
 
-    T_ = diagonalize(T, V, loss_type, fit_index=None)
+    T_ = diagonalize_T(T, V, loss_type, fit_index=None)
     return V.detach(), T_.detach(), loss_all
 
 def optimize_V(ABC, V, M, lr, loss_type, steps=100, reg_coeff=0.1, fit_index=None, loss_all=None, idx_sort=None, idx_sign=None):
