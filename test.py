@@ -125,7 +125,7 @@ task_name = 'binary/sym3_xy_vec'
 
 out, save_name = train(task_name, train_frac, seed=seed, val_check_interval=5)
 (model, datamodule, trainer) = out
-torch.save(model.state_dict(), "model_sym3_xy_vec.pth")
+torch.save(model.state_dict(), "model_sym3_xy_vec.pth") # you can load the checkpoints. Use get_model_pkg with the checkpoint file
 
 
 # model = LITmodel(hparams)
@@ -151,3 +151,5 @@ opt_V_e = optimize_T(rot_train_M / (rot_train_M.norm()) * train_M.norm(), V, tra
 print((opt_V_e - orth).norm() ** 2) # doesn't work
 import pdb; pdb.set_trace()
 # XYZ = generate_figures(model, datamodule, save_name, skip=15, t_init=0, show_steps=5, plot_all_weights=True, ABC_or_A = 'ABC')
+#
+# T = T.permute(0, 2, 1).view(-1, T.shape[-1])

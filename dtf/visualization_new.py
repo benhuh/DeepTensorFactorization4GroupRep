@@ -143,6 +143,11 @@ def diagonalize_T(T, V, loss_type, fit_index=None):  #fit_index=[0,1,2]
 
 def optimize_T(T, V, M, lr, loss_type, steps=100, reg_coeff=0.1, fit_index=None, loss_all=None, idx_sort=None, idx_sign=None):
     if loss_type == 'exact':
+        # T = V @ M
+        # V = T @ M ^{-1}
+        # permute the indices first
+        # T = T.permute(0, 2, 1)
+        # T = T.view(-1, T.shape[-1])
         V = M[:, 0, :] @ torch.linalg.pinv(T[:, 0, :]) # should be the same for every slice
         return V
     loss_all = loss_all or []
