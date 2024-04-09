@@ -288,8 +288,8 @@ class ArithmeticDataset(TensorDataset):
 
     def get_output(self, M,xy):
         x,y = xy[:,0], xy[:,1]
-        # z = torch.einsum('ijk,bi,bj->bk',M.to_dense()+0.0,x,y)
-        z = torch.einsum('ijk,bi,jc->bck',M.to_dense()+0.0,x,y)
+        z = torch.einsum('ijk,bi,bj->bk',M.to_dense()+0.0,x,y)
+        #z = torch.einsum('ijk,bi,jc->bck',M.to_dense()+0.0,x,y)
         return z
 
     def _get_vectorized_data(self, M, total_batch=2.0):
@@ -302,9 +302,9 @@ class ArithmeticDataset(TensorDataset):
         # xy = torch.stack((x, y),dim=1)
         # z = self.get_output(M,xy)
         # w = fixed weights
-        # w = torch.Tensor(np.arange(6, 6) / 100)
-        w = torch.randn(6, 6) / np.sqrt(6) # fix a random seed
-        # w = torch.tile(w, (x.shape[0], 1))
+        w = torch.Tensor(np.arange(6) / 100)
+        #w = torch.randn(6, 6) / np.sqrt(6) # fix a random seed
+        w = torch.tile(w, (x.shape[0], 1))
         xy = torch.stack((x, w),dim=1)
         z = self.get_output(M,xy)
         if noise_level > 0:
