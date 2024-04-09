@@ -35,7 +35,7 @@ def get_args(**kwargs):
                         weight_decay_min = 0,
                         lr = 1/2,
                         momentum = 0.9,
-                        earlystop = 'loss/train',
+                        earlystop = 'scheduler/counter', #'loss/train',
                         scheduler_criterion = None,
                         scheduler_threshold = 1e-5, #3e-5 #10
                         scheduler_decay = 0.0,

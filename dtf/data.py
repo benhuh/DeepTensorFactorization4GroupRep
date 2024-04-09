@@ -311,7 +311,7 @@ class ArithmeticDataset(TensorDataset):
         # w = torch.tile(w, (x.shape[0], 1))
         # xy = torch.stack((x, w),dim=1)
         xy = [x, w]
-        z = self.get_output(M,xy)
+        z = self.get_output(M,xy) # z is [72, 6, 6] and x is [72, 6]
         if noise_level > 0:
             noise = torch.randn_like(z); noise = noise/noise.pow(2).sum(dim=1,keepdim=True).sqrt()
             z += noise * noise_level
@@ -419,7 +419,7 @@ def convert_list2tuple_manos(data, loss_type, data_type):
         assert isinstance(data,list) #and len(data[0])==2
         input = data[1]
         target = data[0]
-
+        print(input.shape, target.shape)
     return input, target
 
 def convert_list2tuple(data, loss_type, data_type):
