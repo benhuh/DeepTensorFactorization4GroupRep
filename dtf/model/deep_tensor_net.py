@@ -203,7 +203,7 @@ class Deep_Tensor_Net_conv(Deep_Tensor_Net):
         init_scale = kwargs.get("init_scale", 1)
         # convolution weights
         # self.conv_weight = nn.Parameter(init_scale * torch.randn(3, 3) / math.sqrt(2))
-        self.conv_weight = nn.Parameter(init_scale * torch.randn(6))
+        self.conv_weight = nn.Parameter(init_scale * torch.randn(6, 6))
 
     def read_from_Tensor(self, W, x):
         if x.dtype == torch.int64:  # x is tensor of indices
@@ -215,5 +215,6 @@ class Deep_Tensor_Net_conv(Deep_Tensor_Net):
             # out = torch.einsum('ijk,bi,bj->bk',W,x1,x2)
             # here I should performing the convolution with the filter?
             # out = torch.einsum('ijk,bi,j->bk',W,x1,self.conv_weight)
-            out = torch.einsum('ijk,bi,j->bk',W,x,self.conv_weight)
+            # out = torch.einsum('ijk,bi,j->bk',W,x,self.conv_weight)
+            out = torch.einsum('ijk,bi,jc->bck',W,x,self.conv_weight)
         return out

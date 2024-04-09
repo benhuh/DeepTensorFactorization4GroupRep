@@ -27,10 +27,19 @@ def check_model(model, datamodule):
     desired: PyTorch tensor
         The true convolution weight.
     """
-    trained = torch.einsum('ijk,j->ik', model.model.net_Weight, model.model.conv_weight)
 
-    w_data = torch.Tensor(np.arange(6) / 100)
-    desired = torch.einsum('ijk,j->ik', datamodule.train_dataset.M.to_dense() + 0.0, w_data)
+    if len(model.model.net_Weight.shape) == 2:
+        trained = torch.einsum('ijk,j->ik', model.model.net_Weight, model.model.conv_weight)
+        w_data = torch.Tensor(np.arange(6) / 100)
+        desired = torch.einsum('ijk,j->ik', datamodule.train_dataset.M.to_dense() + 0.0, w_data)
+    elif len(model.model.net_Weight.shape) == 3:
+        trained = torch.einsum('ijk,jc->ick', model.model.net_Weight, model.model.conv_weight)
+        torch.manual_seed(2)
+        w_data = w = torch.randn(6, 6) / np.sqrt(6)
+        desired = torch.einsum('ijk,jc->ick', datamodule.train_dataset.M.to_dense() + 0.0, w_data)
+    else:
+        raise ValueError('net_Weight has an unexpected shape')
+
     return trained, desired
 
 def train(task_name, train_frac, seed=1, loss_fn = 'mse_loss', optim = 'SGD', lr = 0.35, scheduler_threshold = 1e-6, gpus=None, val_check_interval=5, tensor_width=0, weight_decay=0.1, add_str=None, train_flag=True):
@@ -121,15 +130,8 @@ seed = 2
 train_frac = 61
 task_name = 'binary/sym3_xy_vec'
 
-# change task name to '*_vec' to get a vectorized version
-
 out, save_name = train(task_name, train_frac, seed=seed, val_check_interval=5)
 (model, datamodule, trainer) = out
-torch.save(model.state_dict(), "model_sym3_xy_vec.pth")
-
-
-# model = LITmodel(hparams)
-# model.load_state_dict(torch.load( "model_sym3_xy_vec.pth"))
 
 trained, desired = check_model(model, datamodule)
 

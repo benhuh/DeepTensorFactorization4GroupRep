@@ -28,10 +28,19 @@ def check_model(model, datamodule):
     desired: PyTorch tensor
         The true convolution weight.
     """
-    trained = torch.einsum('ijk,j->ik', model.model.net_Weight, model.model.conv_weight)
 
-    w_data = torch.Tensor(np.arange(6) / 100)
-    desired = torch.einsum('ijk,j->ik', datamodule.train_dataset.M.to_dense() + 0.0, w_data)
+    if len(model.model.net_Weight.shape) == 2:
+        trained = torch.einsum('ijk,j->ik', model.model.net_Weight, model.model.conv_weight)
+        w_data = torch.Tensor(np.arange(6) / 100)
+        desired = torch.einsum('ijk,j->ik', datamodule.train_dataset.M.to_dense() + 0.0, w_data)
+    elif len(model.model.net_Weight.shape) == 3:
+        trained = torch.einsum('ijk,jc->ick', model.model.net_Weight, model.model.conv_weight)
+        torch.manual_seed(2)
+        w_data = w = torch.randn(6, 6) / np.sqrt(6)
+        desired = torch.einsum('ijk,jc->ick', datamodule.train_dataset.M.to_dense() + 0.0, w_data)
+    else:
+        raise ValueError('net_Weight has an unexpected shape')
+
     return trained, desired
 
 seed = 2

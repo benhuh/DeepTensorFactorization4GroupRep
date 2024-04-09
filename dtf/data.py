@@ -156,7 +156,8 @@ class ArithmeticDataset(TensorDataset):
             data_splitted =(tensor.squeeze(dim=dim) for tensor in data.split((1,1), dim=dim))
             super().__init__(*data_splitted)
         else:
-            data, target = convert_list2tuple(data, loss_type, data_type)
+            # data, target = convert_list2tuple(data, loss_type, data_type)
+            data, target = convert_list2tuple_manos(data, loss_type, data_type)
             super().__init__(data, target)
 
 
@@ -287,9 +288,10 @@ class ArithmeticDataset(TensorDataset):
         return data, M
 
     def get_output(self, M,xy):
-        x,y = xy[:,0], xy[:,1]
-        z = torch.einsum('ijk,bi,bj->bk',M.to_dense()+0.0,x,y)
-        #z = torch.einsum('ijk,bi,jc->bck',M.to_dense()+0.0,x,y)
+        # x,y = xy[:,0], xy[:,1]
+        x, y = xy[0], xy[1]
+        # z = torch.einsum('ijk,bi,bj->bk',M.to_dense()+0.0,x,y)
+        z = torch.einsum('ijk,bi,jc->bck',M.to_dense()+0.0,x,y)
         return z
 
     def _get_vectorized_data(self, M, total_batch=2.0):
@@ -302,16 +304,21 @@ class ArithmeticDataset(TensorDataset):
         # xy = torch.stack((x, y),dim=1)
         # z = self.get_output(M,xy)
         # w = fixed weights
-        w = torch.Tensor(np.arange(6) / 100)
-        #w = torch.randn(6, 6) / np.sqrt(6) # fix a random seed
-        w = torch.tile(w, (x.shape[0], 1))
-        xy = torch.stack((x, w),dim=1)
+        # w = torch.Tensor(np.arange(6) / 100)
+        torch.manual_seed(2)
+        w = torch.randn(6, 6) / np.sqrt(6) # fix a random seed
+        print(w)
+        # w = torch.tile(w, (x.shape[0], 1))
+        # xy = torch.stack((x, w),dim=1)
+        xy = [x, w]
         z = self.get_output(M,xy)
         if noise_level > 0:
             noise = torch.randn_like(z); noise = noise/noise.pow(2).sum(dim=1,keepdim=True).sqrt()
             z += noise * noise_level
         # z = torch.conv1d(x, w, padding='same')
-        data = torch.stack((x, z),dim=1)
+        # data = torch.stack((x, z),dim=1) # shape is [72, 2, 6] (x in 0, z in 1)
+        print(x.shape, z.shape)
+        data = [x, z]
         # data = torch.stack((x, y, z),dim=1)
         return data
 
@@ -402,6 +409,19 @@ def get_data_from_M(M, shapes_start=0):
         data_list.append(data)
     return data_list
 
+def convert_list2tuple_manos(data, loss_type, data_type):
+    if data_type == 'text':
+        input_list = [d[:-1] for d in data]
+        target_list = [d[-1] for d in data]
+        input = torch.stack(input_list, dim=0)
+        target = torch.stack(target_list, dim=0)
+    else:
+        assert isinstance(data,list) #and len(data[0])==2
+        input = data[1]
+        target = data[0]
+
+    return input, target
+
 def convert_list2tuple(data, loss_type, data_type):
     if data_type == 'text':
         input_list = [d[:-1] for d in data]
@@ -410,6 +430,7 @@ def convert_list2tuple(data, loss_type, data_type):
         target = torch.stack(target_list, dim=0)
     else:
         assert isinstance(data,list) #and len(data[0])==2
+        import pdb; pdb.set_trace()
         input_list = [d[0] for d in data]
         target_list = [d[1] for d in data]
 
