@@ -37,6 +37,8 @@ def plot_heatmaps(trained, desired, opt_V):
     fig: Matplotlib figure
         The figure containing the heatmaps.
     """
+
+    # make subplots
     base_w = 1
     base_h = 1
     if len(trained.shape) == 2:
@@ -47,39 +49,48 @@ def plot_heatmaps(trained, desired, opt_V):
         fig = plt.figure(figsize=(int(11 * base_w), int(2 * base_h))) # 1 for annot, 6 for trained, 2 for opt_V, 2 for opt_V.T @ opt_V
         gs = gridspec.GridSpec(int(2 * base_h), int(11 * base_w))
         p = 6
+
+    # color maps
     cmap = sns.cubehelix_palette(reverse=True, rot=-0.2, as_cmap=True)
-    cmap_r = sns.cubehelix_palette(reverse=True, rot=0.2, as_cmap=True)
-    ax = plt.subplot(gs[:, p+1:p+3])
-    ax.set_title(r'$\boldsymbol{V}$ matrix', fontweight="bold", fontsize=14)
-    opt_V_norm = opt_V.detach().numpy()
-    sns.heatmap(opt_V_norm, ax=ax, cmap=cmap, cbar=False, square=True, xticklabels=False, yticklabels=False)
+    cmap_r = sns.cubehelix_palette(reverse=True, start=0,rot=0.2, as_cmap=True)
+    cmap_y = sns.cubehelix_palette(reverse=True, start=0, rot=0.6, as_cmap=True)
 
-    ax = plt.subplot(gs[:, p+3:])
-    ax.set_title(r'$\boldsymbol{V}^T\boldsymbol{V}$ (Orthogonal?)', fontweight="bold", fontsize=14)
-    opt_O_norm = (opt_V.T @ opt_V).detach().numpy()
-    sns.heatmap(opt_O_norm, ax=ax, cmap=cmap_r, cbar=False, square=True, xticklabels=False, yticklabels=False)
-
+    # side labels
     ax = plt.subplot(gs[0, 0])
-    ax.annotate('Trained', xy=(0.5, 0.5), xytext=(0.5, 0.5), textcoords='axes fraction', ha='center', va='center', fontsize=14, fontweight="bold")
-    ax.grid(False)
-    ax.set_facecolor('white')
-    ax.set_xticklabels([])
-    ax.set_yticklabels([])
-    ax = plt.subplot(gs[1, 0])
     ax.annotate('Desired', xy=(0.5, 0.5), xytext=(0.5, 0.5), textcoords='axes fraction', ha='center', va='center', fontsize=14, fontweight="bold")
     ax.grid(False)
     ax.set_facecolor('white')
     #plt.axis("off")
     ax.set_xticklabels([])
     ax.set_yticklabels([])
+
+    ax = plt.subplot(gs[1, 0])
+    ax.annotate('Trained', xy=(0.5, 0.5), xytext=(0.5, 0.5), textcoords='axes fraction', ha='center', va='center', fontsize=14, fontweight="bold")
+    ax.grid(False)
+    ax.set_facecolor('white')
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+
     for idx in range(1, p + 1):
         ax = plt.subplot(gs[0, idx])
-        trained_norm = trained[idx - 1].detach().numpy()
-        sns.heatmap(trained_norm, ax=ax, cmap=cmap, cbar=False, square=True, xticklabels=False, yticklabels=False)
+        desired_norm = desired[:, idx - 1, :].detach().numpy()
+        sns.heatmap(desired_norm, ax=ax, cmap=cmap, cbar=False, square=True, xticklabels=False, yticklabels=False)
 
         ax = plt.subplot(gs[1, idx])
-        desired_norm = desired[idx - 1].detach().numpy()
-        sns.heatmap(desired_norm, ax=ax, cmap=cmap, cbar=False, square=True, xticklabels=False, yticklabels=False)
+        trained_norm = trained[:, idx - 1, :].detach().numpy()
+        sns.heatmap(trained_norm, ax=ax, cmap=cmap_y, cbar=False, square=True, xticklabels=False, yticklabels=False)
+
+    # orthogonal plot
+    ax = plt.subplot(gs[:, p+1:p+3])
+    ax.set_title(r'$\boldsymbol{V}$ matrix', fontweight="bold", fontsize=14)
+    opt_V_norm = opt_V.detach().numpy()
+    sns.heatmap(opt_V_norm, ax=ax, cmap=cmap_r, cbar=False, square=True, xticklabels=False, yticklabels=False)
+
+    ax = plt.subplot(gs[:, p+3:])
+    ax.set_title(r'$\boldsymbol{V}^T\boldsymbol{V}$ (Orthogonal?)', fontweight="bold", fontsize=14)
+    opt_O_norm = (opt_V.T @ opt_V).detach().numpy()
+    sns.heatmap(opt_O_norm, ax=ax, cmap=cmap_r, cbar=False, square=True, xticklabels=False, yticklabels=False)
+
     return fig
 
 
