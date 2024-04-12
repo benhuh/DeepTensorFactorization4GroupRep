@@ -161,7 +161,7 @@ def add_model_specific_args(parser: ArgumentParser) -> ArgumentParser:
     """
     parser.add_argument("--model", type=str, default="Deep_Tensor_Net", choices=["Deep_Tensor_Net", "Deep_Tensor_Net_conv"])
 
-    parser.add_argument("--optim", choices=["SGD"], default="SGD")
+    parser.add_argument("--optim", choices=["SGD", "Adam"], default="SGD")
     parser.add_argument("--loss_fn", choices=["mse_loss"], default="mse_loss")
     parser.add_argument("--batchsize", type=float, default=1, help=" 0<N<=1 -> fraction of dataset",)
 

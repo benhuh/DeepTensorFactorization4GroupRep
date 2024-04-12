@@ -8,7 +8,7 @@ import numpy as np
 from dtf.model import get_model_parser, Deep_Tensor_Net, Deep_Tensor_Net_conv #Transformer, Simple_MLP, Simple_MLP2, Simple_CNN, Simple_Resnet
 from dtf.logging_module import Logging_Module
 from dtf.lr_scheduler import  Reduce_WeightDecayCoeff_OnPlateau
-from torch.optim import SGD
+from torch.optim import SGD, Adam
 
 torch_inf = torch.tensor(np.Inf)
 
@@ -99,11 +99,15 @@ class LITmodel(LightningModule, Logging_Module):
         if not (self.optimizers() and self.trainer.lr_scheduler_configs):  # define new optimizers if not already set..  (if lr_scheduler_configs is None)
 
             param_group_1 = {'params': self.model.T_param_list}
-            param_group_2 = {'params': self.model.conv_weight, 'lr': 1 * lr}# , 'weight_decay': self.hparams.conv_weight_decay}
+            param_group_2 = {'params': self.model.conv_weight, 'lr': 1 * lr, 'weight_decay': self.hparams.conv_weight_decay}
             param_groups = [param_group_1, param_group_2]
 
             if self.hparams.optim == 'SGD':
+                # optimizer = Adam(param_groups, lr=lr, weight_decay=0)
                 optimizer = SGD(param_groups, momentum=self.hparams.betas[0], lr=lr, weight_decay=0)
+            elif self.hparams.optim == 'Adam':
+                print("Using Adam optimizer")
+                optimizer = Adam(param_groups, lr=lr, weight_decay=0)
             else:
                 raise ValueError
 

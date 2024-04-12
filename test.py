@@ -14,85 +14,8 @@ import numpy as np
 
 from dtf.train_helper_script import run_exp, plot_all
 from dtf.visualization_new import plot_tensor_slices2, show_netWeight_hist, show_sparse_hist, get_regular_representation, get_regular_representation_XYZ, normalize_factor_list, reorder_tensor, plot_netWeight_with_train_data
-from dtf.visualization_new import optimize_T
+from dtf.visualization_new import optimize_T, plot_heatmaps
 from dtf.training import get_model_pkg
-
-def plot_heatmaps(trained, desired, opt_V):
-    """
-    Plots heatmaps of the trained and desired products between the product structure
-    tensor and the convolution weights, as well as the orthogonal matrix that best
-    aligns the product tensor and the generating data.
-
-    Parameters
-    ----------
-    trained: PyTorch tensor of size (D, D, D) (or (D, D))
-        Learned products.
-    desired: PyTorch tensor of size (D, D, D) (or (D, D))
-        Desired products.
-    opt_V: PyTorch tensor of size (D, D)
-        Orthogonal matrix that best aligns the product tensor and the generating data.
-
-    Returns
-    -------
-    fig: Matplotlib figure
-        The figure containing the heatmaps.
-    """
-
-    # make subplots
-    base_w = 1
-    base_h = 1
-    if len(trained.shape) == 2:
-        fig = plt.figure(figsize=(int(6 * base_w), int(2 * base_h))) # 1 for annot, 1 for trained, 2 for opt_V, 2 for opt_V.T @ opt_V
-        gs = gridspec.GridSpec(int(2 * base_h), int(6 * base_w))
-        p = 1
-    else:
-        fig = plt.figure(figsize=(int(11 * base_w), int(2 * base_h))) # 1 for annot, 6 for trained, 2 for opt_V, 2 for opt_V.T @ opt_V
-        gs = gridspec.GridSpec(int(2 * base_h), int(11 * base_w))
-        p = 6
-
-    # color maps
-    cmap = sns.cubehelix_palette(reverse=True, rot=-0.2, as_cmap=True)
-    cmap_r = sns.cubehelix_palette(reverse=True, start=0,rot=0.2, as_cmap=True)
-    cmap_y = sns.cubehelix_palette(reverse=True, start=0, rot=0.6, as_cmap=True)
-
-    # side labels
-    ax = plt.subplot(gs[0, 0])
-    ax.annotate('Desired', xy=(0.5, 0.5), xytext=(0.5, 0.5), textcoords='axes fraction', ha='center', va='center', fontsize=14, fontweight="bold")
-    ax.grid(False)
-    ax.set_facecolor('white')
-    #plt.axis("off")
-    ax.set_xticklabels([])
-    ax.set_yticklabels([])
-
-    ax = plt.subplot(gs[1, 0])
-    ax.annotate('Trained', xy=(0.5, 0.5), xytext=(0.5, 0.5), textcoords='axes fraction', ha='center', va='center', fontsize=14, fontweight="bold")
-    ax.grid(False)
-    ax.set_facecolor('white')
-    ax.set_xticklabels([])
-    ax.set_yticklabels([])
-
-    for idx in range(1, p + 1):
-        ax = plt.subplot(gs[0, idx])
-        desired_norm = desired[:, idx - 1, :].detach().numpy()
-        sns.heatmap(desired_norm, ax=ax, cmap=cmap, cbar=False, square=True, xticklabels=False, yticklabels=False)
-
-        ax = plt.subplot(gs[1, idx])
-        trained_norm = trained[:, idx - 1, :].detach().numpy()
-        sns.heatmap(trained_norm, ax=ax, cmap=cmap_y, cbar=False, square=True, xticklabels=False, yticklabels=False)
-
-    # orthogonal plot
-    ax = plt.subplot(gs[:, p+1:p+3])
-    ax.set_title(r'$\boldsymbol{V}$ matrix', fontweight="bold", fontsize=14)
-    opt_V_norm = opt_V.detach().numpy()
-    sns.heatmap(opt_V_norm, ax=ax, cmap=cmap_r, cbar=False, square=True, xticklabels=False, yticklabels=False)
-
-    ax = plt.subplot(gs[:, p+3:])
-    ax.set_title(r'$\boldsymbol{V}^T\boldsymbol{V}$ (Orthogonal?)', fontweight="bold", fontsize=14)
-    opt_O_norm = (opt_V.T @ opt_V).detach().numpy()
-    sns.heatmap(opt_O_norm, ax=ax, cmap=cmap_r, cbar=False, square=True, xticklabels=False, yticklabels=False)
-
-    return fig
-
 
 def check_model(model, datamodule):
     """
@@ -137,24 +60,35 @@ model, datamodule, trainer = get_model_pkg(checkpoint)
 
 trained, desired = check_model(model, datamodule)
 
-V = torch.eye(model.model.net_Weight.shape[-1])#.unsqueeze(0).repeat(model.model.net_Weight.shape[0],1,1)
+V = torch.eye(model.model.net_Weight.shape[-1])
 model_weight = model.model.net_Weight.detach()
 
 # first, rotate M and try to recover
-gaus = torch.randn(6, 6)
-svd = torch.linalg.svd(gaus)
-orth = svd[0] @ svd[2]
-print(orth.T @ orth) # sanity check
+# gaus = torch.randn(6, 6)
+# svd = torch.linalg.svd(gaus)
+# orth = svd[0] @ svd[2]
+# print(orth.T @ orth) # sanity check
 train_M = datamodule.train_dataset.M.to_dense() + 0.0
-rot_train_M = torch.einsum('ijk,jl->ilk', train_M, orth)
-opt_V, opt_T, losses = optimize_T(rot_train_M / (rot_train_M.norm()) * train_M.norm(), V, train_M, lr=1e-2, reg_coeff=0.1, loss_type='regular', steps=1000)
-print((opt_V - orth).norm() ** 2) # works
+# rot_train_M = torch.einsum('ijk,jl->ilk', train_M, orth)
+# opt_V, opt_T, losses = optimize_T(rot_train_M / (rot_train_M.norm()) * train_M.norm(), V, train_M, lr=1e-2, reg_coeff=0.01, loss_type='regular', steps=1000)
+# print((opt_V - orth).norm() ** 2) # works
+opt_V, opt_T, losses = optimize_T(model_weight / (model_weight.norm()) * train_M.norm(), V, train_M, lr=1e-2, reg_coeff=0.1, loss_type='regular', steps=1000)
 
 # we should also be able to do this with linear algebra
-opt_V_e = optimize_T(rot_train_M / (rot_train_M.norm()) * train_M.norm(), V, train_M, lr=1e-2, reg_coeff=0.1, loss_type='exact', steps=1000)
-print((opt_V_e - orth).norm() ** 2) # doesn't work
+opt_V_e, opt_T_e, loss_e = optimize_T(model_weight / (model_weight.norm()) * train_M.norm(), V, train_M, loss_type='exact')
+# print((opt_V_e - orth).norm() ** 2) # doesn't work
 
-fig = plot_heatmaps(trained, desired, opt_V)
+# # plot products between weights and T
+# fig = plot_heatmaps(trained, desired, opt_V)
+# plt.show()
+# plt.close()
+
+# plot true T and M
+fig = plot_heatmaps(opt_T, train_M, opt_V)
+plt.show()
+plt.close()
+
+fig = plot_heatmaps(opt_T_e, train_M, opt_V_e)
 plt.show()
 plt.close()
 # import pdb; pdb.set_trace()

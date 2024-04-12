@@ -2,6 +2,14 @@
 
 import matplotlib.pyplot as plt
 # import matplotlib.ticker as mtick
+import matplotlib.gridspec as gridspec
+import seaborn as sns
+from matplotlib import cm, rc
+rc('text', usetex=True)
+rc('text.latex', preamble=r'\usepackage{amsmath}')
+sns.set_theme()
+sns.set_context('paper')
+sns.set(font_scale=1.4)
 import numpy as np
 import torch
 
@@ -16,6 +24,91 @@ import torch
 
 plt.rcParams['text.usetex'] = False #True
 plt.rcParams['savefig.transparent'] = True
+
+def plot_heatmaps(trained, desired, opt_V=None):
+    """
+    Plots heatmaps of the trained and desired products between the product structure
+    tensor and the convolution weights, as well as the orthogonal matrix that best
+    aligns the product tensor and the generating data.
+
+    Parameters
+    ----------
+    trained: PyTorch tensor of size (D, D, D) (or (D, D))
+        Learned products.
+    desired: PyTorch tensor of size (D, D, D) (or (D, D))
+        Desired products.
+    opt_V: PyTorch tensor of size (D, D)
+        Orthogonal matrix that best aligns the product tensor and the generating data.
+
+    Returns
+    -------
+    fig: Matplotlib figure
+        The figure containing the heatmaps.
+    """
+
+    # make subplots
+    base_w = 1
+    base_h = 1
+    if len(trained.shape) == 2:
+        if opt_V is None:
+            fig = plt.figure(figsize=(int(2 * base_w), int(2 * base_h)))
+            gs = gridspec.GridSpec(int(2 * base_h), int(2 * base_w))
+        else:
+            fig = plt.figure(figsize=(int(6 * base_w), int(2 * base_h))) # 1 for annot, 1 for trained, 2 for opt_V, 2 for opt_V.T @ opt_V
+            gs = gridspec.GridSpec(int(2 * base_h), int(6 * base_w))
+        p = 1
+    else:
+        if opt_V is None:
+            fig = plt.figure(figsize=(int(7 * base_w), int(2 * base_h))) # 1 for annot, 6 for trained, 2 for opt_V, 2 for opt_V.T @ opt_V
+            gs = gridspec.GridSpec(int(2 * base_h), int(7 * base_w))
+        else:
+            fig = plt.figure(figsize=(int(11 * base_w), int(2 * base_h))) # 1 for annot, 6 for trained, 2 for opt_V, 2 for opt_V.T @ opt_V
+            gs = gridspec.GridSpec(int(2 * base_h), int(11 * base_w))
+        p = 6
+
+    # color maps
+    cmap = sns.cubehelix_palette(reverse=True, rot=-0.2, as_cmap=True)
+    cmap_r = sns.cubehelix_palette(reverse=True, start=0,rot=0.2, as_cmap=True)
+    cmap_y = sns.cubehelix_palette(reverse=True, start=0, rot=0.6, as_cmap=True)
+
+    # side labels
+    ax = plt.subplot(gs[0, 0])
+    ax.annotate('Desired', xy=(0.5, 0.5), xytext=(0.5, 0.5), textcoords='axes fraction', ha='center', va='center', fontsize=14, fontweight="bold")
+    ax.grid(False)
+    ax.set_facecolor('white')
+    #plt.axis("off")
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+
+    ax = plt.subplot(gs[1, 0])
+    ax.annotate('Trained', xy=(0.5, 0.5), xytext=(0.5, 0.5), textcoords='axes fraction', ha='center', va='center', fontsize=14, fontweight="bold")
+    ax.grid(False)
+    ax.set_facecolor('white')
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+
+    for idx in range(1, p + 1):
+        ax = plt.subplot(gs[0, idx])
+        desired_norm = desired[:, idx - 1, :].detach().numpy()
+        sns.heatmap(desired_norm, ax=ax, cmap=cmap, cbar=False, square=True, xticklabels=False, yticklabels=False)
+
+        ax = plt.subplot(gs[1, idx])
+        trained_norm = trained[:, idx - 1, :].detach().numpy()
+        sns.heatmap(trained_norm, ax=ax, cmap=cmap_y, cbar=False, square=True, xticklabels=False, yticklabels=False)
+
+    if opt_V is not None:
+        # orthogonal plot
+        ax = plt.subplot(gs[:, p+1:p+3])
+        ax.set_title(r'$\boldsymbol{V}$ matrix', fontweight="bold", fontsize=14)
+        opt_V_norm = opt_V.detach().numpy()
+        sns.heatmap(opt_V_norm, ax=ax, cmap=cmap_r, cbar=False, square=True, xticklabels=False, yticklabels=False)
+
+        ax = plt.subplot(gs[:, p+3:])
+        ax.set_title(r'$\boldsymbol{V}^T\boldsymbol{V}$ (Orthogonal?)', fontweight="bold", fontsize=14)
+        opt_O_norm = (opt_V.T @ opt_V).detach().numpy()
+        sns.heatmap(opt_O_norm, ax=ax, cmap=cmap_r, cbar=False, square=True, xticklabels=False, yticklabels=False)
+    return fig
+
 
 
 def check_group(datamodule, plot_flag=False): #anti=False):
@@ -110,7 +203,7 @@ def get_loss_fn(loss_type):
         Id = torch.eye(A_.shape[-1], device=A_.device, dtype=A_.dtype)
         return (A_0-Id).pow(2).mean()
 
-    loss_dict = dict(regular=regular_loss, sparse=sparse_loss, block_diag=offdiagonal_loss, identity=identity_loss)
+    loss_dict = dict(regular=regular_loss, inverse=regular_loss, sparse=sparse_loss, block_diag=offdiagonal_loss, identity=identity_loss)
     return loss_dict[loss_type]
 
 def diagonalize(ABC, V, loss_type, fit_index=None):  #fit_index=[0,1,2]
@@ -136,20 +229,29 @@ def diagonalize_T(T, V, loss_type, fit_index=None):  #fit_index=[0,1,2]
         T = T.to(V.dtype)
 
     if loss_type=='regular':  # if inv_or_trans=='trans':
-        T_ = torch.einsum('ijk,jl->ilk', T, V.T)
-    else:
-        T_ = torch.einsum('ijk,jl->ilk', T, V.inverse())
+        T_ = torch.einsum('ijk,jl->ilk', T, V.T) # assumes T = M @ V
+    elif loss_type=='inverse':
+        T_ = torch.einsum('ijk,jl->ilk', T, V.inverse())  # assumes T = M @ V
     return T_
 
-def optimize_T(T, V, M, lr, loss_type, steps=100, reg_coeff=0.1, fit_index=None, loss_all=None, idx_sort=None, idx_sign=None):
-    if loss_type == 'exact':
-        # T = V @ M
-        # V = T @ M ^{-1}
+def optimize_T(T, V, M, loss_type, lr=1e-2, steps=100, reg_coeff=0.1, fit_index=None, loss_all=None, idx_sort=None, idx_sign=None):
+    if loss_type in ['exact', 'exact_inv']:
+        # T = M @ V
+        # V = M ^{-1} @ T
         # permute the indices first
-        # T = T.permute(0, 2, 1)
-        # T = T.view(-1, T.shape[-1])
-        V = M[:, 0, :] @ torch.linalg.pinv(T[:, 0, :]) # should be the same for every slice
-        return V
+        T_p = T.permute(0, 2, 1)
+        T_p = T_p.reshape(-1, T.shape[1])
+        M_p = M.permute(0, 2, 1)
+        M_p = M_p.reshape(-1, M.shape[1])
+        # V = T[:, 0, :] @ torch.linalg.pinv(M[:, 0, :]) # should be the same for every slice
+        V = torch.linalg.pinv(M_p) @ T_p
+        if loss_type == 'exact':
+            opt_T = torch.einsum('ijk,jl->ilk', T, V.T)
+        elif loss_type == "exact_inv":
+            opt_T = torch.einsum('ijk,jl->ilk', T, V.inverse())
+        loss = (opt_T - M).pow(2).mean()
+        return V, opt_T, loss
+
     loss_all = loss_all or []
     V = torch.nn.Parameter(V)
     optim = torch.optim.SGD([V], lr=lr, momentum=0.9)
