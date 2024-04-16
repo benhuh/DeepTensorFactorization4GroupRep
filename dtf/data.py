@@ -307,6 +307,8 @@ class ArithmeticDataset(TensorDataset):
         # w = torch.Tensor(np.arange(6) / 100)
         torch.manual_seed(2)
         w = torch.randn(6, 6) / np.sqrt(6) # fix a random seed
+        svd = torch.linalg.svd(w)
+        w = svd[0] @ svd[2]
         print(w)
         # w = torch.tile(w, (x.shape[0], 1))
         # xy = torch.stack((x, w),dim=1)
