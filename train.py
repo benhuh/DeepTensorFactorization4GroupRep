@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 
 import torch
+import numpy as np
+
+from dtf.train_helper_script import run_exp, plot_all
+from dtf.visualization_new import plot_tensor_slices2, show_netWeight_hist, show_sparse_hist, get_regular_representation, get_regular_representation_XYZ, normalize_factor_list, reorder_tensor, plot_netWeight_with_train_data
+from dtf.visualization_new import optimize_T, plot_heatmaps, check_model
+
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import seaborn as sns
@@ -9,46 +15,7 @@ rc('text', usetex=True)
 rc('text.latex', preamble=r'\usepackage{amsmath}')
 sns.set_theme()
 sns.set_context('paper')
-sns.set(font_scale=1.4)
-import numpy as np
-
-from dtf.train_helper_script import run_exp, plot_all
-from dtf.visualization_new import plot_tensor_slices2, show_netWeight_hist, show_sparse_hist, get_regular_representation, get_regular_representation_XYZ, normalize_factor_list, reorder_tensor, plot_netWeight_with_train_data
-from dtf.visualization_new import optimize_T, plot_heatmaps
-
-def check_model(model, datamodule):
-    """
-    Checks if the learned convolution weight matches the one used for training
-    (in terms of products with the tensor, has basis ambiguity).
-
-    Parameters
-    ----------
-    model: PyTorch model
-        The model to be checked.
-    datamodule: PyTorch datamodule
-        The datamodule used for training the model.
-
-    Returns
-    -------
-    trained: PyTorch tensor
-        The convolution weight recovered by training.
-    desired: PyTorch tensor
-        The true convolution weight.
-    """
-
-    if len(model.model.net_Weight.shape) == 2:
-        trained = torch.einsum('ijk,j->ik', model.model.net_Weight, model.model.conv_weight)
-        w_data = torch.Tensor(np.arange(6) / 100)
-        desired = torch.einsum('ijk,j->ik', datamodule.train_dataset.M.to_dense() + 0.0, w_data)
-    elif len(model.model.net_Weight.shape) == 3:
-        trained = torch.einsum('ijk,jc->ick', model.model.net_Weight, model.model.conv_weight)
-        torch.manual_seed(2)
-        w_data = w = torch.randn(6, 6) / np.sqrt(6)
-        desired = torch.einsum('ijk,jc->ick', datamodule.train_dataset.M.to_dense() + 0.0, w_data)
-    else:
-        raise ValueError('net_Weight has an unexpected shape')
-
-    return trained, desired
+# sns.set(font_scale=1.4)
 
 def train(task_name, train_frac, seed=1, loss_fn = 'mse_loss', optim = 'SGD', lr = 0.005, scheduler_threshold = 1e-6, gpus=None, val_check_interval=5, tensor_width=0, weight_decay=0.1, add_str=None, train_flag=True):
     # Shouldn't we have a way to control here if it is a transformer or a DFN?
@@ -138,7 +105,7 @@ seed = 2
 train_frac = 61
 task_name = 'binary/sym3_xy_vec'
 
-out, save_name = train(task_name, train_frac, seed=seed, val_check_interval=5, lr = 0.005, optim="SGD") # SGD - lr = 0.005, Adam - lr = 0.001
+out, save_name = train(task_name, train_frac, seed=seed, val_check_interval=5, lr = 0.001, optim="Adam") # SGD - lr = 0.005, Adam - lr = 0.001
 (model, datamodule, trainer) = out
 
 trained, desired = check_model(model, datamodule)
@@ -148,7 +115,7 @@ conv_weight = model.model.conv_weight.detach()
 train_M = datamodule.train_dataset.M.to_dense() + 0.0
 
 V = torch.eye(model.model.net_Weight.shape[-1])
-opt_V, opt_T, losses = optimize_T(model_weight / (model_weight.norm()) * train_M.norm(), V, train_M, lr=1e-2, reg_coeff=0.1, loss_type='exact', steps=1000)
+opt_V, opt_T, losses = optimize_T(model_weight / (model_weight.norm()) * train_M.norm(), V, train_M, lr=1e-2, reg_coeff=0.1, loss_type='regular', steps=1000)
 
 # original
 fig = plot_heatmaps(model_weight, train_M)
@@ -159,5 +126,5 @@ plt.close()
 fig = plot_heatmaps(opt_T, train_M, opt_V)
 plt.show()
 plt.close()
-import pdb; pdb.set_trace()
+# import pdb; pdb.set_trace()
 # XYZ = generate_figures(model, datamodule, save_name, skip=15, t_init=0, show_steps=5, plot_all_weights=True, ABC_or_A = 'ABC')

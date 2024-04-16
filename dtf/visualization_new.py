@@ -9,7 +9,7 @@ rc('text', usetex=True)
 rc('text.latex', preamble=r'\usepackage{amsmath}')
 sns.set_theme()
 sns.set_context('paper')
-sns.set(font_scale=1.4)
+# sns.set(font_scale=1.4)
 import numpy as np
 import torch
 
@@ -22,8 +22,42 @@ import torch
 #         ABC_new.append( torch.stack(T_))
 #     return ABC_new
 
-plt.rcParams['text.usetex'] = False #True
-plt.rcParams['savefig.transparent'] = True
+# plt.rcParams['text.usetex'] = False #True
+# plt.rcParams['savefig.transparent'] = True
+
+def check_model(model, datamodule):
+    """
+    Checks if the learned convolution weight matches the one used for training
+    (in terms of products with the tensor, has basis ambiguity).
+
+    Parameters
+    ----------
+    model: PyTorch model
+        The model to be checked.
+    datamodule: PyTorch datamodule
+        The datamodule used for training the model.
+
+    Returns
+    -------
+    trained: PyTorch tensor
+        The convolution weight recovered by training.
+    desired: PyTorch tensor
+        The true convolution weight.
+    """
+
+    if len(model.model.net_Weight.shape) == 2:
+        trained = torch.einsum('ijk,j->ik', model.model.net_Weight, model.model.conv_weight)
+        w_data = torch.Tensor(np.arange(6) / 100)
+        desired = torch.einsum('ijk,j->ik', datamodule.train_dataset.M.to_dense() + 0.0, w_data)
+    elif len(model.model.net_Weight.shape) == 3:
+        trained = torch.einsum('ijk,jc->ick', model.model.net_Weight, model.model.conv_weight)
+        torch.manual_seed(2)
+        w_data = w = torch.randn(6, 6) / np.sqrt(6)
+        desired = torch.einsum('ijk,jc->ick', datamodule.train_dataset.M.to_dense() + 0.0, w_data)
+    else:
+        raise ValueError('net_Weight has an unexpected shape')
+
+    return trained, desired
 
 def plot_heatmaps(trained, desired, opt_V=None):
     """
@@ -104,12 +138,10 @@ def plot_heatmaps(trained, desired, opt_V=None):
         sns.heatmap(opt_V_norm, ax=ax, cmap=cmap_r, cbar=False, square=True, xticklabels=False, yticklabels=False)
 
         ax = plt.subplot(gs[:, p+3:])
-        ax.set_title(r'$\boldsymbol{V}^T\boldsymbol{V}$ (Orthogonal?)', fontweight="bold", fontsize=14)
+        ax.set_title(r'$\boldsymbol{V}^T\boldsymbol{V}$', fontweight="bold", fontsize=14)
         opt_O_norm = (opt_V.T @ opt_V).detach().numpy()
         sns.heatmap(opt_O_norm, ax=ax, cmap=cmap_r, cbar=False, square=True, xticklabels=False, yticklabels=False)
     return fig
-
-
 
 def check_group(datamodule, plot_flag=False): #anti=False):
     M = datamodule.train_dataset.M.to_dense()+0      # cab
@@ -203,7 +235,7 @@ def get_loss_fn(loss_type):
         Id = torch.eye(A_.shape[-1], device=A_.device, dtype=A_.dtype)
         return (A_0-Id).pow(2).mean()
 
-    loss_dict = dict(regular=regular_loss, inverse=regular_loss, sparse=sparse_loss, block_diag=offdiagonal_loss, identity=identity_loss)
+    loss_dict = dict(regular=regular_loss, regular_inv=regular_loss, sparse=sparse_loss, sparse_inv=sparse_loss, block_diag=offdiagonal_loss, identity=identity_loss)
     return loss_dict[loss_type]
 
 def diagonalize(ABC, V, loss_type, fit_index=None):  #fit_index=[0,1,2]
@@ -228,16 +260,53 @@ def diagonalize_T(T, V, loss_type, fit_index=None):  #fit_index=[0,1,2]
     if T.dtype != V.dtype:
         T = T.to(V.dtype)
 
-    if loss_type=='regular':  # if inv_or_trans=='trans':
+    if loss_type == 'regular' or loss_type == 'sparse':  # if inv_or_trans=='trans':
         T_ = torch.einsum('ijk,jl->ilk', T, V.T) # assumes T = M @ V
-    elif loss_type=='inverse':
+    elif loss_type=='regular_inv' or loss_type == 'sparse_inv':
         T_ = torch.einsum('ijk,jl->ilk', T, V.inverse())  # assumes T = M @ V
+    # else:
+    #     T_ = torch.einsum('ijk,jl->ilk', T, V.inverse())  # assumes T = M @ V
     return T_
 
-def optimize_T(T, V, M, loss_type, lr=1e-2, steps=100, reg_coeff=0.1, fit_index=None, loss_all=None, idx_sort=None, idx_sign=None):
+def optimize_T(T, V, M, loss_type, lr=1e-2, steps=1000, reg_coeff=0.1, fit_index=None, loss_all=None, idx_sort=None, idx_sign=None):
+    """
+    Finds a matrix V that best aligns the product tensor T with the generating tensor M. Assumes that T = M @ V.
+
+    Parameters
+    ----------
+    T: PyTorch tensor of size (D, D, D)
+        Unoptimized proudct structure tensor.
+    V: PyTorch tensor of size (D, D)
+        Matrix to optimize.
+    M: PyTorch tensor of size (D, D, D)
+        Generating tensor.
+    loss_type: str
+        Type of loss to use. Can be
+        {
+            'exact':        Uses `pinv' to obtain exact solution, assuming V is orthogonal.             (requires M)
+            'exact_inv':    Uses `pinv' to obtain exact solution.                                       (requires M)
+            'regular':      Uses gradient descent to minimize the L2 loss, assuming V is orthogonal.    (requires M)
+            'regular_inv':  Uses gradient descent to minimize the L2 loss.                              (requires M)
+            'sparse':       Uses gradient descent to minimize the L1 loss, assuming V is orthogonal.
+            'sparse_inv':   Uses gradient descent to minimize the L1 loss.
+        }
+    lr: float
+        Learning rate for gradient descent.
+    steps: int
+        Number of steps to take in gradient descent.
+    reg_coeff: float
+        Regularization coefficient for the loss.
+
+    Returns
+    -------
+    V: PyTorch tensor of size (D, D)
+        Optimized matrix.
+    T_: PyTorch tensor of size (D, D, D)
+        Optimized product structure tensor.
+    loss: float
+        List of loss values.
+    """
     if loss_type in ['exact', 'exact_inv']:
-        # T = M @ V
-        # V = M ^{-1} @ T
         # permute the indices first
         T_p = T.permute(0, 2, 1)
         T_p = T_p.reshape(-1, T.shape[1])

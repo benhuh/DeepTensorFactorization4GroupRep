@@ -64,7 +64,7 @@ def run_exp(train_frac, extra_args_str = None, train_flag = True, **kwargs):  # 
 
     hparams = get_hparams(args_str.split(), default_kwargs=default_kwargs)
     # hardcode for now
-    hparams.conv_weight_decay = 0.0
+    hparams.conv_weight_decay = 0.1 # should be 0.1
     # import pdb; pdb.set_trace()
     model, datamodule, trainer = get_model_pkg(hparams)
 
