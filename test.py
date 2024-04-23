@@ -21,7 +21,7 @@ seed = 2
 train_frac = 61
 task_name = 'binary/sym3_xy_vec'
 
-checkpoint = r'lightning_logs/test/mse_loss/binary/sym3_xy_vec_6/FC/Adam momentum=0.5 customL2/lr=0.001 wd=0.1/seed2/frac=61.0/version_14/checkpoints/epoch=7998-step=4000.ckpt'
+checkpoint = r'lightning_logs/test/mse_loss/binary/sym3_xy_vec_6/FC/Adam momentum=0.5 customL2/lr=0.001 wd=0.1/seed2/frac=61.0/version_20/checkpoints/epoch=7998-step=4000.ckpt'
 model, datamodule, trainer = get_model_pkg(checkpoint)
 
 trained, desired = check_model(model, datamodule)

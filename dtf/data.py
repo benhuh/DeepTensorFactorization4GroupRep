@@ -306,9 +306,12 @@ class ArithmeticDataset(TensorDataset):
         # w = fixed weights
         # w = torch.Tensor(np.arange(6) / 100)
         torch.manual_seed(2)
-        w = torch.randn(6, 6) / np.sqrt(6) # fix a random seed
-        svd = torch.linalg.svd(w)
-        w = svd[0] @ svd[2]
+        w = torch.randn(6, 36) / np.sqrt(6) # fix a random seed
+        # you can choose if you want orthogonal weights or not
+        ortho = False
+        if ortho:
+            svd = torch.linalg.svd(w)
+            w = svd[0] @ svd[2]
         print(w)
         # w = torch.tile(w, (x.shape[0], 1))
         # xy = torch.stack((x, w),dim=1)

@@ -197,7 +197,7 @@ class Deep_Tensor_Net_conv(Deep_Tensor_Net):
         init_scale = kwargs.get("init_scale", 1)
         # convolution weights
         # self.conv_weight = nn.Parameter(init_scale * torch.randn(3, 3) / math.sqrt(2))
-        self.conv_weight = nn.Parameter(init_scale * torch.randn(6, 6))
+        self.conv_weight = nn.Parameter(init_scale * torch.randn(6, 36)) # should match data.py line 309
 
     def read_from_Tensor(self, W, x):
         if x.dtype == torch.int64:  # x is tensor of indices
@@ -215,4 +215,5 @@ class Deep_Tensor_Net_conv(Deep_Tensor_Net):
 
     def normalize(self):
         self.conv_weight.data = F.normalize(self.conv_weight.data, p=2, dim=0)
+        self.net_Weight.data = F.normalize(self.net_Weight.data, p=2, dim=1)
         return self

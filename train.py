@@ -115,7 +115,7 @@ conv_weight = model.model.conv_weight.detach()
 train_M = datamodule.train_dataset.M.to_dense() + 0.0
 
 V = torch.eye(model.model.net_Weight.shape[-1])
-opt_V, opt_T, losses = optimize_T(model_weight / (model_weight.norm()) * train_M.norm(), V, train_M, lr=1e-2, reg_coeff=0.0, loss_type='sparse_inv', steps=1000)
+opt_V, opt_T, losses = optimize_T(model_weight / (model_weight.norm()) * train_M.norm(), V, train_M, lr=1e-2, reg_coeff=1.0, loss_type='sparse_inv')
 
 # original
 fig = plot_heatmaps(model_weight, train_M)
