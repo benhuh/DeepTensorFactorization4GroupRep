@@ -136,8 +136,9 @@ class LITmodel(LightningModule, Logging_Module):
             record_condition = not (self.current_step % self.hparams.record_wg_hist) #50)
             if record_condition:
                 self.record_param_grad()
-        with torch.no_grad():
-            self.model.normalize()
+
+        # with torch.no_grad():
+        #     self.model.normalize()
 
 
     def _step( self, data, batch_idx: int, train_or_test: str = 'train'):

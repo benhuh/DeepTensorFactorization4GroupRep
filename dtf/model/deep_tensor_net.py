@@ -214,6 +214,8 @@ class Deep_Tensor_Net_conv(Deep_Tensor_Net):
         return out
 
     def normalize(self):
-        self.conv_weight.data = F.normalize(self.conv_weight.data, p=2, dim=0)
-        self.net_Weight.data = F.normalize(self.net_Weight.data, p=2, dim=1)
+        # normalize by diving the total norm instead
+        self.conv_weight.data = F.normalize(self.conv_weight.data, p=2, dim=0) # conw_weight is 6x36
+        # self.net_Weight.data = F.normalize(self.net_Weight.data, p=2, dim=1) # net_Weight is 6x6x6
+        # we want to update the factor weights. Divide the factor weights by  Frob(net_Weight) ^ 1/3
         return self
