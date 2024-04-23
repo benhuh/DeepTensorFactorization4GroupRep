@@ -33,7 +33,7 @@ V = torch.eye(model.model.net_Weight.shape[-1])
 opt_V_e, opt_T_e, loss_e = optimize_T(model_weight / (model_weight.norm()) * train_M.norm(), V, train_M, lr=1e-2, reg_coeff=1, loss_type='sparse')
 
 V = torch.eye(model.model.net_Weight.shape[-1])
-opt_V, opt_T, losses = optimize_T(model_weight / (model_weight.norm()) * train_M.norm(), V, train_M, lr=1e-2, reg_coeff=0.0, loss_type='sparse_inv')
+opt_V, opt_T, losses = optimize_T(model_weight / (model_weight.norm()) * train_M.norm(), V, train_M, lr=1e-2, reg_coeff=1.0, loss_type='sparse_inv')
 
 # original
 fig = plot_heatmaps(model_weight, train_M)

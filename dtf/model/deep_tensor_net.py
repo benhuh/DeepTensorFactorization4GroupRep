@@ -104,12 +104,6 @@ class Deep_Tensor_Net(Base_Model):
         if self.layer_type == 'FC': # Hack for now
             tensor_size_list[0] = [N**2, N, N]
 
-        # Should have a trainable convolution filter here
-        # self.filter = nn.Parameter(init_scale * torch.randn(3, 3) / math.sqrt(2))
-        # (I actually think the filter is incorporate into W)
-        #
-        # Separate class: subclass of Deep_Tensor_Net(_w)
-
         self.einsum_str = einsum_str
         self.idx_appearance_dict = idx_appearance_dict
         self.input_str_list = input_str_list
@@ -218,3 +212,7 @@ class Deep_Tensor_Net_conv(Deep_Tensor_Net):
             # out = torch.einsum('ijk,bi,j->bk',W,x,self.conv_weight)
             out = torch.einsum('ijk,bi,jc->bck',W,x,self.conv_weight)
         return out
+
+    def normalize(self):
+        self.conv_weight.data = F.normalize(self.conv_weight.data, p=2, dim=0)
+        return self
