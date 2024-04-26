@@ -4,23 +4,34 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
-from dtf.tensor_operations import tensor_prod, compute_svd_all, compute_imbalance2, compute_Custom_L2_all, compute_Manual_L2_all, get_einsum_str, get_tensor_size
+from dtf.tensor_operations import (
+    tensor_prod,
+    compute_svd_all,
+    compute_imbalance2,
+    compute_Custom_L2_all,
+    compute_Manual_L2_all,
+    get_einsum_str,
+    get_tensor_size,
+)
 
 
 class Tensor_Layer(nn.Module):
-    def __init__(self, siz, init_scale=1): #, random_init=True):  # , permute_dim=None
+    def __init__(self, siz, init_scale=1):  # , random_init=True):  # , permute_dim=None
         super().__init__()
-        assert len(siz)==3
+        assert len(siz) == 3
         # import pdb; pdb.set_trace()
-        self.base = init_scale * torch.randn(*siz) / math.sqrt(siz[0])          # self.base *= math.sqrt(siz[0])
+        self.base = (
+            init_scale * torch.randn(*siz) / math.sqrt(siz[0])
+        )  # self.base *= math.sqrt(siz[0])
         self.base = nn.Parameter(self.base)
 
     @property
     def tensor(self):
         return self.base
 
+
 def get_W_shape_cum(W):
-    w_shape=list(W.shape[1:])+[1]
+    w_shape = list(W.shape[1:]) + [1]
     w_shape.reverse()
     p = 1
     cum_shape = [p := p * n for n in w_shape]
@@ -31,24 +42,28 @@ def get_W_shape_cum(W):
 class Base_Model(nn.Module):
     def __init__(self, *args, **kwargs):  #  loss_fn='mse_loss'):
         super().__init__()
-        self.loss_fn = kwargs.get("loss_fn", 'mse_loss')
+        self.loss_fn = kwargs.get("loss_fn", "mse_loss")
         self.layer_type = kwargs.get("layer_type", None)
 
     def get_label(self, out, y):
-        if self.loss_fn == 'cross_entropy':
-            assert  y.dtype in [torch.int64]
+        if self.loss_fn == "cross_entropy":
+            assert y.dtype in [torch.int64]
             if len(y.shape) == len(out.shape):
-                y=y.squeeze()
+                y = y.squeeze()
             label = y
 
-        elif self.loss_fn in ['mse_loss']:
-            if y.dtype in [torch.int64] :
+        elif self.loss_fn in ["mse_loss"]:
+            if y.dtype in [torch.int64]:
                 if len(y.shape) == len(out.shape):
-                    y=y.squeeze()
+                    y = y.squeeze()
                 label = F.one_hot(y, num_classes=out.shape[1]).float()
-            elif y.dtype in [torch.float, torch.bool, torch.complex64]: #, torch.float64]:
-                if len(y.shape) == len(out.shape)+1:
-                    y=y.squeeze()
+            elif y.dtype in [
+                torch.float,
+                torch.bool,
+                torch.complex64,
+            ]:  # , torch.float64]:
+                if len(y.shape) == len(out.shape) + 1:
+                    y = y.squeeze()
                 label = y.to(out.dtype)
             else:
                 raise ValueError
@@ -56,28 +71,28 @@ class Base_Model(nn.Module):
 
     def evaluate(self, data, *args, **kwargs):
         x, y = data
-        out, other_outputs = self.forward(x,  *args, **kwargs)
+        out, other_outputs = self.forward(x, *args, **kwargs)
         label = self.get_label(out, y)
 
-        if self.loss_fn == 'cross_entropy':
-            loss = F.cross_entropy(out, label, reduction= 'sum')
-        elif self.loss_fn in ['mse_loss', 'Lagrange']:
-            loss = F.mse_loss(out, label, reduction= 'sum') # / 2
-        elif self.loss_fn == 'mse_loss_complex':
-            loss = ((out-label).abs()**2).sum() # / 2
+        if self.loss_fn == "cross_entropy":
+            loss = F.cross_entropy(out, label, reduction="sum")
+        elif self.loss_fn in ["mse_loss", "Lagrange"]:
+            loss = F.mse_loss(out, label, reduction="sum")  # / 2
+        elif self.loss_fn == "mse_loss_complex":
+            loss = ((out - label).abs() ** 2).sum()  # / 2
         else:
-            raise ValueError(f'No loss function named {self.loss_fn}')
+            raise ValueError(f"No loss function named {self.loss_fn}")
 
         acc = self.get_accuracy(out, y)
         return loss, acc, out, (other_outputs, x, out, label)
 
     def get_accuracy(self, out, y):
-        if len(y.shape) == len(out.shape)-1:
+        if len(y.shape) == len(out.shape) - 1:
             with torch.no_grad():
                 acc = self._accuracy(out, y)
                 acc = acc.mean()
         else:
-            acc = None #torch.zeros(1)
+            acc = None  # torch.zeros(1)
         return acc
 
     def _accuracy(self, y_hat: Tensor, y: Tensor) -> Tensor:
@@ -86,57 +101,62 @@ class Base_Model(nn.Module):
 
 
 class Deep_Tensor_Net(Base_Model):
-    def __init__(self,  *args, **kwargs): #init_val = 1) -> None:
+    def __init__(self, *args, **kwargs):  # init_val = 1) -> None:
         super().__init__(*args, **kwargs)
         self.initialize_weights(*args, **kwargs)
 
     def evaluate(self, data, *args, **kwargs):
-        loss, acc, out, (other_outputs, x, out, label)  = super().evaluate(data, *args, **kwargs)
+        loss, acc, out, (other_outputs, x, out, label) = super().evaluate(
+            data, *args, **kwargs
+        )
         return loss, acc, out, other_outputs
 
-
     def initialize_weights(self, *args, **kwargs):
-        N, r, decomposition_type = kwargs.get("N", None), kwargs.get("r", None), 'FC'
+        N, r, decomposition_type = kwargs.get("N", None), kwargs.get("r", None), "FC"
         init_scale = kwargs.get("init_scale", 1)
-        r = r or (min(N) if isinstance(N,(tuple,list)) else N)
+        r = r or (min(N) if isinstance(N, (tuple, list)) else N)
         einsum_str, shared_idx0 = get_einsum_str(decomposition_type)
-        tensor_size_list, idx_appearance_dict, input_str_list, ext_indices, _ = get_tensor_size(N, r, einsum_str)
-        if self.layer_type == 'FC': # Hack for now
+        tensor_size_list, idx_appearance_dict, input_str_list, ext_indices, _ = (
+            get_tensor_size(N, r, einsum_str)
+        )
+        if self.layer_type == "FC":  # Hack for now
             tensor_size_list[0] = [N**2, N, N]
 
         self.einsum_str = einsum_str
         self.idx_appearance_dict = idx_appearance_dict
         self.input_str_list = input_str_list
         self.ext_indices = ext_indices
-        self.decomposition_type=decomposition_type
+        self.decomposition_type = decomposition_type
 
-        self.layers = self.initialize_Tensors(tensor_size_list, init_scale) #, random_init)
+        self.layers = self.initialize_Tensors(
+            tensor_size_list, init_scale
+        )  # , random_init)
 
         self.N = N
         W = self.net_Weight
         self.W_shape_cum = get_W_shape_cum(W)
         # self.store_init_weights()
 
-
     def initialize_Tensors(self, tensor_size_list, init_scale0=1):
         tensor_depth = len(tensor_size_list)
-        init_scale = init_scale0**(1/tensor_depth)
+        init_scale = init_scale0 ** (1 / tensor_depth)
 
         layers = []
         for siz in tensor_size_list:
-            layer =  Tensor_Layer(siz, init_scale=init_scale)
+            layer = Tensor_Layer(siz, init_scale=init_scale)
             layers.append(layer)
 
         return nn.ModuleList(layers)
-
 
     @property
     def T_param_list(self):
         return [layer.tensor for layer in self.layers]
 
-    def forward(self, x: Tensor, W = None, *args, **kwargs): # -> Tuple[Tensor, Union[Tensor, None], Union[Tensor, None]]:
+    def forward(
+        self, x: Tensor, W=None, *args, **kwargs
+    ):  # -> Tuple[Tensor, Union[Tensor, None], Union[Tensor, None]]:
         if W is None:
-            if kwargs.get('train_or_test') == 'train':
+            if kwargs.get("train_or_test") == "train":
                 W = self.net_Weight
             else:
                 W = self._net_Weight  # existing weight
@@ -145,19 +165,23 @@ class Deep_Tensor_Net(Base_Model):
 
     def read_from_Tensor(self, W, x):
         if x.dtype == torch.int64:  # x is tensor of indices
-            out = self.index_select(W,x)
+            out = self.index_select(W, x)
         else:
             # here I should performing the convolution with the filter?
             # out = torch.einsum('ijk,bi, (no batch dimension for w)j->bk',W,x1,w)
-            x1,x2 = (tensor.squeeze(dim=1) for tensor in x.split(1,dim=1))
-            out = torch.einsum('ijk,bi,bj->bk',W,x1,x2)
+            x1, x2 = (tensor.squeeze(dim=1) for tensor in x.split(1, dim=1))
+            out = torch.einsum("ijk,bi,bj->bk", W, x1, x2)
         return out
 
     def index_select(self, W, x):
-        index_1d = (x.float() @ self.W_shape_cum[-x.shape[1]:].to(x.device)).int()      #    index_1d = W.shape[-2] * idx1 + idx2
+        index_1d = (
+            x.float() @ self.W_shape_cum[-x.shape[1] :].to(x.device)
+        ).int()  #    index_1d = W.shape[-2] * idx1 + idx2
         # if len(W.shape) != 2:
-        numel = math.prod(list(W.shape[-x.shape[1]:]))
-        out = W.reshape(-1, numel).index_select(-1, index_1d)        # out = torch.index_select(W.view(-1, numel), -1, index_1d)
+        numel = math.prod(list(W.shape[-x.shape[1] :]))
+        out = W.reshape(-1, numel).index_select(
+            -1, index_1d
+        )  # out = torch.index_select(W.view(-1, numel), -1, index_1d)
         return out.T
 
     @property
@@ -171,8 +195,8 @@ class Deep_Tensor_Net(Base_Model):
 
     @property
     def net_Weight(self):
-        self._net_Weight= tensor_prod(self.factor_list, self.einsum_str)
-        return self._net_Weight #.permute(2,0,1)
+        self._net_Weight = tensor_prod(self.factor_list, self.einsum_str)
+        return self._net_Weight  # .permute(2,0,1)
 
     def get_svd(self):
         return compute_svd_all(self.factor_list, self.idx_appearance_dict)
@@ -180,28 +204,29 @@ class Deep_Tensor_Net(Base_Model):
     def get_imbalance2(self):
         return compute_imbalance2(self.T_list_no_grad)
 
-
     def manual_L2_loss(self):
         return compute_Manual_L2_all(self.factor_list)
 
-
-
-    def Custom_L2_loss(self): #mix_coeff=0.00):
+    def Custom_L2_loss(self):  # mix_coeff=0.00):
         loss = compute_Custom_L2_all(self.factor_list, self.idx_appearance_dict)
         return loss
 
+
 class Deep_Tensor_Net_conv(Deep_Tensor_Net):
-    def __init__(self,  *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.initialize_weights(*args, **kwargs)
         init_scale = kwargs.get("init_scale", 1)
+        n_vectors = kwargs.get("n_vectors", 1)
         # convolution weights
         # self.conv_weight = nn.Parameter(init_scale * torch.randn(3, 3) / math.sqrt(2))
-        self.conv_weight = nn.Parameter(init_scale * torch.randn(6, 36)) # should match data.py line 309
+        self.conv_weight = nn.Parameter(
+            init_scale * torch.randn(6, n_vectors)
+        )  # should match data.py line 309
 
     def read_from_Tensor(self, W, x):
         if x.dtype == torch.int64:  # x is tensor of indices
-            out = self.index_select(W,x)
+            out = self.index_select(W, x)
         else:
             # (this split is weird, data should have 3 tensors, x,y,z)
             # import pdb; pdb.set_trace()
@@ -210,12 +235,14 @@ class Deep_Tensor_Net_conv(Deep_Tensor_Net):
             # here I should performing the convolution with the filter?
             # out = torch.einsum('ijk,bi,j->bk',W,x1,self.conv_weight)
             # out = torch.einsum('ijk,bi,j->bk',W,x,self.conv_weight)
-            out = torch.einsum('ijk,bi,jc->bck',W,x,self.conv_weight)
+            out = torch.einsum("ijk,bi,jc->bck", W, x, self.conv_weight)
         return out
 
     def normalize(self):
         # normalize by diving the total norm instead
-        self.conv_weight.data = F.normalize(self.conv_weight.data, p=2, dim=0) # conw_weight is 6x36
+        self.conv_weight.data = F.normalize(
+            self.conv_weight.data, p=2, dim=0
+        )  # conw_weight is 6x36
         # self.net_Weight.data = F.normalize(self.net_Weight.data, p=2, dim=1) # net_Weight is 6x6x6
         # we want to update the factor weights. Divide the factor weights by  Frob(net_Weight) ^ 1/3
         return self

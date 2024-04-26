@@ -16,14 +16,16 @@ import math
 from copy import deepcopy
 
 NUM_WORKERS = 16
-MODULUS = 97 # 59 #
+MODULUS = 97  # 59 #
 PERMUTATIONS = 5
 
 from math import factorial
 
+
 def get_perm(task):
-    perm = int(task.split("sym")[-1].split("_")[0]  or PERMUTATIONS) # 3 if "sym3_xxx"
+    perm = int(task.split("sym")[-1].split("_")[0] or PERMUTATIONS)  # 3 if "sym3_xxx"
     return perm
+
 
 def get_default_N(task_name, default_modulus=None):
     if "sym" in task_name:
@@ -31,6 +33,7 @@ def get_default_N(task_name, default_modulus=None):
         return factorial(perm)
     else:
         return default_modulus or MODULUS
+
 
 def set_random_seed(seed):
 
@@ -41,7 +44,21 @@ def set_random_seed(seed):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
-SHOWN_IN_GROK = ["addition", "subtraction", "division", "mix1", "quad1", "quad2", "quad3", "cube1", "cube2", "sym_xy", "sym_xyx_inv", "sym_xyx"]
+
+SHOWN_IN_GROK = [
+    "addition",
+    "subtraction",
+    "division",
+    "mix1",
+    "quad1",
+    "quad2",
+    "quad3",
+    "cube1",
+    "cube2",
+    "sym_xy",
+    "sym_xyx_inv",
+    "sym_xyx",
+]
 SHOWN_IN_GROK_short = ["addition", "mix1", "quad2", "cube1", "sym_xy", "sym_xyx_inv"]
 
 ALGORITHMIC_OPERATORS = {
@@ -61,15 +78,19 @@ ALGORITHMIC_OPERATORS = {
     # "unary/sort": "sort",
     # "unary/reverse": "reverse",
     # "unary/copy": "copy",
-#
-# GROUP_OPERATORS = {
+    #
+    # GROUP_OPERATORS = {
     "binary/sym_xy": "sym_xy",
     "binary/sym_xyx_inv": "sym_xyx_inv",
     "binary/sym_xyx": "sym_xyx",
 }
 
-ALGORITHMIC_OPERATORS_GROK = {key:val for key,val in ALGORITHMIC_OPERATORS.items() if val in SHOWN_IN_GROK}
-ALGORITHMIC_OPERATORS_GROK_short = {key:val for key,val in ALGORITHMIC_OPERATORS.items() if val in SHOWN_IN_GROK_short}
+ALGORITHMIC_OPERATORS_GROK = {
+    key: val for key, val in ALGORITHMIC_OPERATORS.items() if val in SHOWN_IN_GROK
+}
+ALGORITHMIC_OPERATORS_GROK_short = {
+    key: val for key, val in ALGORITHMIC_OPERATORS.items() if val in SHOWN_IN_GROK_short
+}
 
 TOY_OPERATORS = {
     "binary/sym3_xy": "sym3_xy",
@@ -90,11 +111,12 @@ S5_range = 120
 
 DEFAULT_DATA_DIR = "data"
 
+
 def calc_split_len(train_frac, total_data_batch):
     assert train_frac <= 100.0
     if train_frac > 1:
         train_frac /= 100.0
-    train_data_batch = round(total_data_batch * train_frac )
+    train_data_batch = round(total_data_batch * train_frac)
     val_data_batch = total_data_batch - train_data_batch
     return train_data_batch, val_data_batch
 
@@ -102,18 +124,22 @@ def calc_split_len(train_frac, total_data_batch):
 class ArithmeticDataset(TensorDataset):
     """A Dataset of arithmetic equations"""
 
-    def __init__(self,  tensor_width = [0,0,0],
-                        total_batch: int = 0,
-                        task: str = 'binary/+',
-                        task_rank: int = None,
-                        operand_length: Optional[int] = None,
-                        loss_type: str = 'classification',
-                        data_type: str = 'tuple'  ,
-                        M = None,
-                        seed=0,
-                        noise_level=0,
-                        shuffle=True,
-                        )  -> None:
+    def __init__(
+        self,
+        tensor_width=[0, 0, 0],
+        total_batch: int = 0,
+        task: str = "binary/+",
+        task_rank: int = None,
+        operand_length: Optional[int] = None,
+        loss_type: str = "classification",
+        data_type: str = "tuple",
+        M=None,
+        seed=0,
+        noise_level=0,
+        shuffle=True,
+        ortho=False,
+        n_vectors=6,
+    ) -> None:
         """
         :param data: A list of equations strings. Each equation must have an '=' in it.
         """
@@ -121,78 +147,91 @@ class ArithmeticDataset(TensorDataset):
         self.total_batch = total_batch
         self.name = self.get_dsname(task, operand_length)
 
-        if seed<=0:
+        if seed <= 0:
             seed = None
         self.rng = np.random.RandomState(seed=seed)
 
-        vector_task = '_vec' in task
+        vector_task = "_vec" in task
         if vector_task:
-            task = task.replace('_vec','')
+            task = task.replace("_vec", "")
 
         if M is not None:
-            assert data_type=='tuple'
+            assert data_type == "tuple"
             data = get_data_from_M(M)
             self.M = M
         if "binary/" in task:
-            data, self.M, self.factors = self.make_data(task, task_rank, operand_length, data_type) #, loss_type
+            data, self.M, self.factors = self.make_data(
+                task, task_rank, operand_length, data_type
+            )  # , loss_type
         elif "layer/" in task:
             data, self.M = self._get_layer_structure(task)
         else:
             raise ValueError(f"unsupported task: {task}")
 
         if vector_task:
-            data = self._get_vectorized_data(self.M, total_batch=2.0)
+            data = self._get_vectorized_data(
+                self.M, total_batch=2.0, ortho=ortho, n_vectors=n_vectors
+            )
 
-        data = shuffle_data(data, self.rng, data_type, noise_level=noise_level, shuffle=shuffle)
+        data = shuffle_data(
+            data, self.rng, data_type, noise_level=noise_level, shuffle=shuffle
+        )
 
-        if data_type=='text':
-            arithmetic_tokenizer = ArithmeticTokenizer(N = self.tensor_width)
+        if data_type == "text":
+            arithmetic_tokenizer = ArithmeticTokenizer(N=self.tensor_width)
             data = arithmetic_tokenizer.encode(data)
             super().__init__(data)
 
         elif isinstance(data, torch.Tensor):
-            dim=1
+            dim = 1
             # data_splitted =(tensor.squeeze(dim=dim) for tensor in data.split((2,1), dim=dim))
-            data_splitted =(tensor.squeeze(dim=dim) for tensor in data.split((1,1), dim=dim))
+            data_splitted = (
+                tensor.squeeze(dim=dim) for tensor in data.split((1, 1), dim=dim)
+            )
             super().__init__(*data_splitted)
         else:
             # data, target = convert_list2tuple(data, loss_type, data_type)
             data, target = convert_list2tuple_manos(data, loss_type, data_type)
             super().__init__(data, target)
 
-
-    def _make_binary_operation_data(self, operator: str, data_type: str, operands=None) -> List[str]:
+    def _make_binary_operation_data(
+        self, operator: str, data_type: str, operands=None
+    ) -> List[str]:
         N = self.tensor_width
         operator = operator.split("binary/")[1]
         if operator == "+-+-":  # composit
             operator = ["+", "-", "-&+", "-&-"]
         else:
-            assert isinstance(N,int)
+            assert isinstance(N, int)
 
         if operator.startswith("sym"):
-            if "xyx" in operator: # in ["xyx_inv", "xyx"]:
+            if "xyx" in operator:  # in ["xyx_inv", "xyx"]:
                 fnc = Permutation
-            else: #if operator in ["xy"]:
+            else:  # if operator in ["xy"]:
                 fnc = np.array
-            inverse_factorial = {1:1, 2:2, 6:3, 24:4, 120:5, 720:6}
+            inverse_factorial = {1: 1, 2: 2, 6: 3, 24: 4, 120: 5, 720: 6}
             n_range = inverse_factorial[N]  # inverting factorial..
 
             operands = operands or list(range(n_range))
             elems = map(fnc, itertools.permutations(operands))
             tuples = itertools.product(elems, repeat=2)
-            tuples_idx = itertools.product(range(N), repeat=2)            # N = TASK_INPUT_NUM["sym5"]
+            tuples_idx = itertools.product(
+                range(N), repeat=2
+            )  # N = TASK_INPUT_NUM["sym5"]
 
-            elems_str = map(str,map(fnc, itertools.permutations(operands)))
-            elems_dict = {v:k for k,v in enumerate(elems_str)}
+            elems_str = map(str, map(fnc, itertools.permutations(operands)))
+            elems_dict = {v: k for k, v in enumerate(elems_str)}
 
         elif "_mod" in operator:
             modulo = N
             elems = [Mod(i, modulo) for i in range(modulo)]
             tuples = itertools.product(elems, repeat=2)
-            tuples_idx = itertools.product(range(modulo), repeat=2)            # N = TASK_INPUT_NUM["modulo"]
+            tuples_idx = itertools.product(
+                range(modulo), repeat=2
+            )  # N = TASK_INPUT_NUM["modulo"]
 
             elems_str = map(str, elems)
-            elems_dict = {v:k for k,v in enumerate(elems_str)}
+            elems_dict = {v: k for k, v in enumerate(elems_str)}
         else:
             operands = operands or list(range(N))
             tuples = itertools.product(operands, repeat=2)
@@ -203,11 +242,11 @@ class ArithmeticDataset(TensorDataset):
 
         MODULUS = N
 
-        operators = operator if isinstance(operator,(tuple,list)) else [operator]
-        for (t, operator) in enumerate(operators):
-            for (a, b), (i,j) in zip(tuples, tuples_idx):
+        operators = operator if isinstance(operator, (tuple, list)) else [operator]
+        for t, operator in enumerate(operators):
+            for (a, b), (i, j) in zip(tuples, tuples_idx):
                 if operator == "/":
-                    if b == 0: # not part of eqs
+                    if b == 0:  # not part of eqs
                         continue
                     else:
                         c = a
@@ -217,7 +256,7 @@ class ArithmeticDataset(TensorDataset):
                         c = a * b * (a.__invert__())
                     elif "xyx" in operator:  #  in [ "sym3_xyx", "sym5_xyx"]:
                         c = a * b * a
-                    else: #if operator in ["sym3_xy", "sym_xy"]:
+                    else:  # if operator in ["sym3_xy", "sym_xy"]:
                         c = b[a]
                 elif operator == "+":
                     c = (a + b) % MODULUS
@@ -228,9 +267,9 @@ class ArithmeticDataset(TensorDataset):
                 elif operator == "-&-":
                     c = (-a - b) % MODULUS
                 elif operator == "+*":
-                    c = (a + b) % MODULUS if a % 2 == 0  else (a * b) % MODULUS
+                    c = (a + b) % MODULUS if a % 2 == 0 else (a * b) % MODULUS
                 elif operator == "+-":
-                    c = (a + b) % MODULUS if a % 2 == 0  else (a - b) % MODULUS
+                    c = (a + b) % MODULUS if a % 2 == 0 else (a - b) % MODULUS
                 elif "_mod" in operator:
                     expression = operator.split("_mod")[0]
                     function = eval(f"lambda x, y: ({expression})")
@@ -238,17 +277,19 @@ class ArithmeticDataset(TensorDataset):
                 else:
                     c = eval(f"({a} {operator} {b}) % {MODULUS}")
 
-                if operator.startswith("sym") or "_mod" in operator:  # Huh: convert back to index..
-                    a = i #elems_dict[str(a)]
-                    b = j #elems_dict[str(b)]
+                if (
+                    operator.startswith("sym") or "_mod" in operator
+                ):  # Huh: convert back to index..
+                    a = i  # elems_dict[str(a)]
+                    b = j  # elems_dict[str(b)]
                     c = elems_dict[str(c)]
 
-                if data_type=='tuple':
-                    if len(operators)>1:
+                if data_type == "tuple":
+                    if len(operators) > 1:
                         eq = ((t, a, b), c)  # t = task index
                     else:
                         eq = ((a, b), c)
-                elif data_type=='text':
+                elif data_type == "text":
                     # eq = " ".join(map(render, [a, operator, b, EQ_TOKEN, c]))
                     # eq = " ".join(map(render, [a, "o", b, EQ_TOKEN, c]))
                     eq = " ".join(map(render, [a, b, c]))
@@ -258,88 +299,93 @@ class ArithmeticDataset(TensorDataset):
                 eqs.append(eq)
 
         # Get a sparse tensor representation of dataset
-        if data_type=='tuple':
+        if data_type == "tuple":
             # import pdb; pdb.set_trace()
-            coo = torch.tensor([(eq[1], *eq[0]) for eq in eqs])  # eqs[:5] =  [((0, 0), 0), ((0, 1), 1), ((0, 2), 2), ((0, 3), 3), ((0, 4), 4)]
-            M = torch.sparse_coo_tensor(coo.T,torch.ones(coo.shape[0]).bool(), size=(N,)*coo.shape[1]) #.to_dense()
+            coo = torch.tensor(
+                [(eq[1], *eq[0]) for eq in eqs]
+            )  # eqs[:5] =  [((0, 0), 0), ((0, 1), 1), ((0, 2), 2), ((0, 3), 3), ((0, 4), 4)]
+            M = torch.sparse_coo_tensor(
+                coo.T, torch.ones(coo.shape[0]).bool(), size=(N,) * coo.shape[1]
+            )  # .to_dense()
         else:
             M, coo = None, None
-        return eqs, M, None #coo
-
+        return eqs, M, None  # coo
 
     def _get_layer_structure(self, task: str):
-        N = self.tensor_width#[0]
+        N = self.tensor_width  # [0]
         layer_name = task.split("layer/")[1]
-        if layer_name == 'FC': # fully_connected
-            eqs=[]
+        if layer_name == "FC":  # fully_connected
+            eqs = []
             for i in range(N):
                 for j in range(N):
-                    k = i*N + j
+                    k = i * N + j
                     # eqs.append((i,k,j))
-                    eqs.append(((i,j),k))
+                    eqs.append(((i, j), k))
         else:
             raise ValueError
 
         coo = torch.tensor([(eq[1], *eq[0]) for eq in eqs])
-        M = torch.sparse_coo_tensor(coo.T,torch.ones(coo.shape[0]).bool(), size=(N**2,N,N))
+        M = torch.sparse_coo_tensor(
+            coo.T, torch.ones(coo.shape[0]).bool(), size=(N**2, N, N)
+        )
         M = M.permute(1, 0, 2)
 
-        data = get_data_from_M(M.to_dense()+0.0, shapes_start=1)
+        data = get_data_from_M(M.to_dense() + 0.0, shapes_start=1)
         return data, M
 
-    def get_output(self, M,xy):
+    def get_output(self, M, xy):
         # x,y = xy[:,0], xy[:,1]
         x, y = xy[0], xy[1]
         # z = torch.einsum('ijk,bi,bj->bk',M.to_dense()+0.0,x,y)
-        z = torch.einsum('ijk,bi,jc->bck',M.to_dense()+0.0,x,y)
+        z = torch.einsum("ijk,bi,jc->bck", M.to_dense() + 0.0, x, y)
         return z
 
-    def _get_vectorized_data(self, M, total_batch=2.0):
+    def _get_vectorized_data(self, M, total_batch=2.0, n_vectors=6, ortho=False):
         # M is the same as T in the model, it should have the convolution structure
-        total_batch = int(total_batch * M.shape[0]**2)
+        total_batch = int(total_batch * M.shape[0] ** 2)
         noise_level = 0.00
 
-        x, y = torch.randn(2, total_batch, M.shape[0]) #.split((1,1))
-        x, y = x/x.pow(2).sum(dim=1,keepdim=True).sqrt(), y/y.pow(2).sum(dim=1,keepdim=True).sqrt()
+        x, y = torch.randn(2, total_batch, M.shape[0])  # .split((1,1))
+        x, y = (
+            x / x.pow(2).sum(dim=1, keepdim=True).sqrt(),
+            y / y.pow(2).sum(dim=1, keepdim=True).sqrt(),
+        )
         # xy = torch.stack((x, y),dim=1)
         # z = self.get_output(M,xy)
         # w = fixed weights
         # w = torch.Tensor(np.arange(6) / 100)
         torch.manual_seed(2)
-        w = torch.randn(6, 36) / np.sqrt(6) # fix a random seed
+        w = torch.randn(6, n_vectors) / np.sqrt(6)  # fix a random seed
         # you can choose if you want orthogonal weights or not
-        ortho = False
-        if ortho:
+        if ortho == "True":
             svd = torch.linalg.svd(w)
+            print(svd[0].shape, svd[1].shape, svd[2].shape)
             w = svd[0] @ svd[2]
-        print(w)
         # w = torch.tile(w, (x.shape[0], 1))
         # xy = torch.stack((x, w),dim=1)
         xy = [x, w]
-        z = self.get_output(M,xy) # z is [72, 6, 6] and x is [72, 6]
+        z = self.get_output(M, xy)  # z is [72, 6, 6] and x is [72, 6]
         if noise_level > 0:
-            noise = torch.randn_like(z); noise = noise/noise.pow(2).sum(dim=1,keepdim=True).sqrt()
+            noise = torch.randn_like(z)
+            noise = noise / noise.pow(2).sum(dim=1, keepdim=True).sqrt()
             z += noise * noise_level
         # z = torch.conv1d(x, w, padding='same')
         # data = torch.stack((x, z),dim=1) # shape is [72, 2, 6] (x in 0, z in 1)
-        print(x.shape, z.shape)
         data = [x, z]
         # data = torch.stack((x, y, z),dim=1)
         return data
 
-
     # @classmethod
     def get_dsname(self, task, operand_length) -> str:
         task, noise_level = self._get_operator_and_noise_level(task)
-        ds_name = VALID_OPERATORS.get(task,task)
+        ds_name = VALID_OPERATORS.get(task, task)
         if operand_length is not None:
             ds_name += f"_length-{operand_length}"
         if noise_level > 0:
             ds_name += f"_noise-{noise_level}"
         return ds_name
 
-
-    @staticmethod # @classmethod
+    @staticmethod  # @classmethod
     def _get_operator_and_noise_level(task):
         if "_noisy" in task:
             task, noise_level = task.split("_noisy_")
@@ -348,19 +394,27 @@ class ArithmeticDataset(TensorDataset):
             return task, 0
 
     # @classmethod
-    def make_data(self, task, task_rank, operands=None,
-                  data_type='tuple',) -> List[str]:
+    def make_data(
+        self,
+        task,
+        task_rank,
+        operands=None,
+        data_type="tuple",
+    ) -> List[str]:
         task, noise_level = self._get_operator_and_noise_level(task)
         factors = None
 
         if "binary/" in task:
-            data, M, factors = self._make_binary_operation_data(task, data_type, operands=None)
+            data, M, factors = self._make_binary_operation_data(
+                task, data_type, operands=None
+            )
         else:
             raise ValueError(f"unsupported task: {task}")
 
         return data, M, factors
 
-def shuffle_data(data, rng, data_type='text', noise_level=0, shuffle=True):
+
+def shuffle_data(data, rng, data_type="text", noise_level=0, shuffle=True):
     tensor_data = isinstance(data, torch.Tensor)
     if tensor_data:
         dtype, data = data.dtype, data.numpy()
@@ -376,29 +430,35 @@ def shuffle_data(data, rng, data_type='text', noise_level=0, shuffle=True):
     #         for i in range(noise_level):
     #             data[i] = data[i].split(" = ")[0] + " = " + random_answers[i]
 
-    if data_type=='tuple':
+    if data_type == "tuple":
         if noise_level > 0:
             random_answer_eqns = rng.choice(data, size=noise_level)
-            random_answers = [ random_eq[-1] for random_eq in random_answer_eqns ]
+            random_answers = [random_eq[-1] for random_eq in random_answer_eqns]
             for i in range(noise_level):
                 data[i][-1] = random_answers[i]
     else:
         raise ValueError
     return data
 
+
 def get_ortho(n0, n1=None):
     n1 = n1 or n0
-    return torch.nn.init.orthogonal_(torch.empty(n0,n1))
+    return torch.nn.init.orthogonal_(torch.empty(n0, n1))
 
 
 def get_data_from_M(M, shapes_start=0):
-    if shapes_start==0:
-        tuples = itertools.product(*(list(range(m)) for m in M.shape))         # tuples = itertools.product(list(range(N)), repeat=len(M.shape))
-    elif shapes_start==1:  # for "completion/tensor2"
-        assert len(M.shape)>=3
-        L=list(range(len(M.shape)));        L = L[1:]+L[:1]
+    if shapes_start == 0:
+        tuples = itertools.product(
+            *(list(range(m)) for m in M.shape)
+        )  # tuples = itertools.product(list(range(N)), repeat=len(M.shape))
+    elif shapes_start == 1:  # for "completion/tensor2"
+        assert len(M.shape) >= 3
+        L = list(range(len(M.shape)))
+        L = L[1:] + L[:1]
         M = M.permute(L)
-        tuples = itertools.product(*(list(range(m)) for m in M.shape[:-shapes_start]))         # tuples = itertools.product(list(range(N)), repeat=len(M.shape))
+        tuples = itertools.product(
+            *(list(range(m)) for m in M.shape[:-shapes_start])
+        )  # tuples = itertools.product(list(range(N)), repeat=len(M.shape))
 
     int_type = M.dtype == torch.int64
 
@@ -406,43 +466,46 @@ def get_data_from_M(M, shapes_start=0):
 
     for index_tuple in tuples:
         target = M[index_tuple].to(M.dtype)
-        if shapes_start==0:
-            target=target.unsqueeze(-1)
-        if shapes_start==1 and int_type:
+        if shapes_start == 0:
+            target = target.unsqueeze(-1)
+        if shapes_start == 1 and int_type:
             target = target.argmax().item()
         data = (index_tuple, target)
         data_list.append(data)
     return data_list
 
+
 def convert_list2tuple_manos(data, loss_type, data_type):
-    if data_type == 'text':
+    if data_type == "text":
         input_list = [d[:-1] for d in data]
         target_list = [d[-1] for d in data]
         input = torch.stack(input_list, dim=0)
         target = torch.stack(target_list, dim=0)
     else:
-        assert isinstance(data,list) #and len(data[0])==2
+        assert isinstance(data, list)  # and len(data[0])==2
         input = data[1]
         target = data[0]
-        print(input.shape, target.shape)
     return input, target
 
+
 def convert_list2tuple(data, loss_type, data_type):
-    if data_type == 'text':
+    if data_type == "text":
         input_list = [d[:-1] for d in data]
         target_list = [d[-1] for d in data]
         input = torch.stack(input_list, dim=0)
         target = torch.stack(target_list, dim=0)
     else:
-        assert isinstance(data,list) #and len(data[0])==2
-        import pdb; pdb.set_trace()
+        assert isinstance(data, list)  # and len(data[0])==2
+        import pdb
+
+        pdb.set_trace()
         input_list = [d[0] for d in data]
         target_list = [d[1] for d in data]
 
         input = LongTensor(input_list)
 
-        if isinstance( target_list[0], int) :
-            if loss_type == 'regression':
+        if isinstance(target_list[0], int):
+            if loss_type == "regression":
                 target = Tensor(target_list)
             else:
                 target = LongTensor(target_list)
@@ -450,6 +513,7 @@ def convert_list2tuple(data, loss_type, data_type):
             target = torch.stack(target_list, dim=0)
 
     return input, target
+
 
 def calculate_batchsize(ds_size: int, batchsize_hint: int = 1, max_batch=None) -> int:
     """
@@ -465,92 +529,147 @@ def calculate_batchsize(ds_size: int, batchsize_hint: int = 1, max_batch=None) -
     """
     if (batchsize_hint > 0) and (batchsize_hint <= 1):
         if max_batch is None:
-            return  math.ceil(ds_size * batchsize_hint)
+            return math.ceil(ds_size * batchsize_hint)
         else:
-            return  min(math.ceil(ds_size * batchsize_hint), max_batch)
+            return min(math.ceil(ds_size * batchsize_hint), max_batch)
 
     elif batchsize_hint > 1:
         return int(min(batchsize_hint, ds_size))
     else:
-        print('batch_size:', batchsize_hint)
+        print("batch_size:", batchsize_hint)
         raise ValueError("batchsize_hint must be >= 0")
+
 
 ###########################
 # create Mask
 def create_mask(datamodule):
     x = datamodule.train_dataset.tensors[0]
     M_shape = datamodule.train_dataset.M.shape
-    import pdb; pdb.set_trace()
-    Mask = torch.sparse_coo_tensor(x.T,torch.ones(x.shape[0]).bool(), size=M_shape[:2]).to_dense() + 0.0
-    Mask = Mask.unsqueeze(dim=2).repeat(1,1,M_shape[2])
+    import pdb
+
+    pdb.set_trace()
+    Mask = (
+        torch.sparse_coo_tensor(
+            x.T, torch.ones(x.shape[0]).bool(), size=M_shape[:2]
+        ).to_dense()
+        + 0.0
+    )
+    Mask = Mask.unsqueeze(dim=2).repeat(1, 1, M_shape[2])
     return Mask
 
 
 class ArithmeticDataModule(LightningDataModule):
-    def __init__(self, *args, M = None, **kwargs):
+    def __init__(self, *args, M=None, **kwargs):
         super().__init__()
-        for k,v in kwargs.items():
+        for k, v in kwargs.items():
             setattr(self, k, v)
 
-        self.setup_done=False
+        self.setup_done = False
         self.M = M
-        self.num_workers = getattr(self, 'num_workers', NUM_WORKERS)
+        self.num_workers = getattr(self, "num_workers", NUM_WORKERS)
 
-    def setup(self, stage: Optional[str] = None):          # Assign train/val datasets for use in dataloaders
+    def setup(
+        self, stage: Optional[str] = None
+    ):  # Assign train/val datasets for use in dataloaders
         # run setup only once
         if self.setup_done:
             pass
         else:
             self.setup_helper(stage)
-            self.setup_done=True
+            self.setup_done = True
 
     def setup_helper(self, stage):
         set_random_seed(self.seed)
 
-        dataset_full = ArithmeticDataset(   tensor_width = self.tensor_width,
-                                            task = self.task,
-                                            task_rank = self.task_rank,
-                                            data_type = self.data_type,
-                                            seed=self.seed,
-                                            M = self.M, )
+        dataset_full = ArithmeticDataset(
+            tensor_width=self.tensor_width,
+            task=self.task,
+            task_rank=self.task_rank,
+            data_type=self.data_type,
+            seed=self.seed,
+            M=self.M,
+            n_vectors=self.n_vectors,
+            ortho=self.ortho,
+        )
         split_sizes = calc_split_len(self.train_frac, len(dataset_full))
 
         from copy import deepcopy
-        train_data_batch, val_data_batch = split_sizes
-        self.train_dataset = deepcopy(dataset_full);  self.train_dataset.tensors = list(tensor[:train_data_batch] for tensor in self.train_dataset.tensors)
-        self.val_dataset   = deepcopy(dataset_full);  self.val_dataset.tensors   = list(tensor[-val_data_batch:] for tensor in self.val_dataset.tensors)
 
-        print('train dataset size:', len(self.train_dataset), 'val dataset size:', len(self.val_dataset), 'ratio:',len(self.train_dataset)/(len(self.train_dataset)+len(self.val_dataset)),'%')
+        train_data_batch, val_data_batch = split_sizes
+        self.train_dataset = deepcopy(dataset_full)
+        self.train_dataset.tensors = list(
+            tensor[:train_data_batch] for tensor in self.train_dataset.tensors
+        )
+        self.val_dataset = deepcopy(dataset_full)
+        self.val_dataset.tensors = list(
+            tensor[-val_data_batch:] for tensor in self.val_dataset.tensors
+        )
+
+        print(
+            "train dataset size:",
+            len(self.train_dataset),
+            "val dataset size:",
+            len(self.val_dataset),
+            "ratio:",
+            len(self.train_dataset) / (len(self.train_dataset) + len(self.val_dataset)),
+            "%",
+        )
 
     def train_dataloader(self):
-        batch_size = calculate_batchsize(len(self.train_dataset), batchsize_hint=self.batchsize_hint, max_batch=None) #100000)
-        if isinstance(self.train_dataset,ArithmeticDataset):
-            if self.batchsize_hint==1:
-                return IterableDataset(self.train_dataset, batch_size, shuffle=False, drop_last=False)
+        batch_size = calculate_batchsize(
+            len(self.train_dataset), batchsize_hint=self.batchsize_hint, max_batch=None
+        )  # 100000)
+        if isinstance(self.train_dataset, ArithmeticDataset):
+            if self.batchsize_hint == 1:
+                return IterableDataset(
+                    self.train_dataset, batch_size, shuffle=False, drop_last=False
+                )
             else:
-                return IterableDataset(self.train_dataset, batch_size, shuffle=True, drop_last=True)
+                return IterableDataset(
+                    self.train_dataset, batch_size, shuffle=True, drop_last=True
+                )
         else:
-            return MultiEpochsDataLoader(self.train_dataset, batch_size=batch_size, shuffle=True, num_workers=self.num_workers, drop_last=True)
+            return MultiEpochsDataLoader(
+                self.train_dataset,
+                batch_size=batch_size,
+                shuffle=True,
+                num_workers=self.num_workers,
+                drop_last=True,
+            )
 
     def val_dataloader(self):
-        batch_size = calculate_batchsize(len(self.val_dataset), batchsize_hint=1, max_batch=None) #20000) # Full batch
+        batch_size = calculate_batchsize(
+            len(self.val_dataset), batchsize_hint=1, max_batch=None
+        )  # 20000) # Full batch
         # print('val', batch_size)
-        if isinstance(self.val_dataset,ArithmeticDataset):
-            return IterableDataset( self.val_dataset, batch_size, shuffle=False, drop_last=False)  # no need to batch validation data
+        if isinstance(self.val_dataset, ArithmeticDataset):
+            return IterableDataset(
+                self.val_dataset, batch_size, shuffle=False, drop_last=False
+            )  # no need to batch validation data
         else:
-            return MultiEpochsDataLoader(self.val_dataset, batch_size=batch_size, shuffle=False, num_workers=self.num_workers, drop_last=False)
+            return MultiEpochsDataLoader(
+                self.val_dataset,
+                batch_size=batch_size,
+                shuffle=False,
+                num_workers=self.num_workers,
+                drop_last=False,
+            )
 
     def test_dataloader(self):
         return self.val_dataloader()
 
+
 #################################
+
 
 class IterableDataset(torch.utils.data.IterableDataset):
     """
     An iterator over batches of data in an ArithmeticDataset
     """
 
-    def __init__(self, dataset, batch_size, shuffle: bool = True, drop_last=False) -> None:
+    def __init__(
+        self, dataset, batch_size, shuffle: bool = True, drop_last=False
+    ) -> None:
         """
         :param dataset: the dataset to iterate over
         :param device: the torch device to send batches to
@@ -568,7 +687,7 @@ class IterableDataset(torch.utils.data.IterableDataset):
 
     def reset_iteration(self, shuffle=True):
         self.ii = 0
-        if shuffle: # and self.dataset.train:
+        if shuffle:  # and self.dataset.train:
             self.idx = torch.randperm(len(self.dataset))
         else:
             self.idx = torch.arange(len(self.dataset))
@@ -584,15 +703,19 @@ class IterableDataset(torch.utils.data.IterableDataset):
         """
 
         batch_begin = self.ii * self.batch_size
-        batch_end = (self.ii+1) * self.batch_size
-        should_end = (batch_end > len(self.dataset)) if self.drop_last else (batch_begin > len(self.dataset) - 1)
+        batch_end = (self.ii + 1) * self.batch_size
+        should_end = (
+            (batch_end > len(self.dataset))
+            if self.drop_last
+            else (batch_begin > len(self.dataset) - 1)
+        )
 
         if should_end:
             # print('reset iteration', self.ii, len(self.dataset))
             self.reset_iteration()
             raise StopIteration
         self.ii += 1
-        return self.dataset[self.idx[batch_begin : batch_end]]
+        return self.dataset[self.idx[batch_begin:batch_end]]
 
     def __len__(self) -> int:
         """
@@ -601,8 +724,10 @@ class IterableDataset(torch.utils.data.IterableDataset):
         # return math.ceil(len(self.dataset) / self.batch_size)
         return math.floor(len(self.dataset) / self.batch_size)
 
+
 #################################
 # from https://discuss.pytorch.org/t/enumerate-dataloader-slow/87778/3
+
 
 class MultiEpochsDataLoader(DataLoader):
 
@@ -622,7 +747,7 @@ class MultiEpochsDataLoader(DataLoader):
 
 
 class _RepeatSampler(object):
-    """ Sampler that repeats forever.  """
+    """Sampler that repeats forever."""
 
     def __init__(self, sampler):
         self.sampler = sampler
@@ -639,7 +764,7 @@ class ArithmeticTokenizer:
     """Stores the list of token text to token id mappings and converts between them"""
 
     def __init__(self, N):
-        self.itos = self.get_tokens(N) #, total_range = S5_range)
+        self.itos = self.get_tokens(N)  # , total_range = S5_range)
         self.stoi: Dict[str, int] = dict([(s, i) for i, s in enumerate(self.itos)])
 
     def _encode(self, s: str) -> Tensor:
@@ -657,7 +782,7 @@ class ArithmeticTokenizer:
             return self._encode(obj)
         elif isinstance(obj, list):
             if isinstance(obj[0], tuple):
-                assert len(obj[0])==2 # input/target
+                assert len(obj[0]) == 2  # input/target
                 return obj
             else:
                 return torch.stack([self._encode(s) for s in obj], dim=0)
@@ -696,10 +821,10 @@ class ArithmeticTokenizer:
         #     tokens = ( list(map(render, itertools.permutations(range(num)))))
         # else:
         tokens = (
-                    # ["o", EQ_TOKEN] #, EOS_TOKEN]
-                    list(map(render, list(range(total_range)))) #NUMS+NUMS_extra))
-                    # + list(sorted([k.replace('binary/','').replace('unary/','') for k in VALID_OPERATORS.keys()]))                    # # + list(sorted(list(VALID_OPERATORS.keys())))
-                )
+            # ["o", EQ_TOKEN] #, EOS_TOKEN]
+            list(map(render, list(range(total_range))))  # NUMS+NUMS_extra))
+            # + list(sorted([k.replace('binary/','').replace('unary/','') for k in VALID_OPERATORS.keys()]))                    # # + list(sorted(list(VALID_OPERATORS.keys())))
+        )
         return tokens
 
 
