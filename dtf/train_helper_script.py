@@ -12,7 +12,9 @@ def get_args_str(args):
 
     args_str += f" --optim {args.optim} --random_seed {args.random_seed} --weight_decay_min {args.weight_decay_min} --conv_weight_decay {args.conv_weight_decay}"  #' --constant_lr'
     args_str += f" --exp_name {args.exp_name} --task_name {args.task_name} --tensor_width {args.tensor_width} --task_rank {args.task_rank} --model_rank {args.model_rank} --loss_fn {args.loss_fn} "
-    args_str += f" --train_frac {args.train_frac} --init_scale {args.init_scale} --weight_decay {args.weight_decay} --lr {args.lr} --betas {args.momentum} 0 --max_steps {args.max_steps} --n_vectors {args.n_vectors} --ortho {args.ortho}"
+    args_str += f" --train_frac {args.train_frac} --init_scale {args.init_scale} --weight_decay {args.weight_decay} --lr {args.lr} --betas {args.momentum} 0 --max_steps {args.max_steps} --n_vectors {args.n_vectors}"
+    if args.ortho:
+        args_str += f" --ortho"
     args_str += f" --record_wg_hist {args.record_wg_hist}"
 
     scheduler_criterion = "imbalance2/mean"

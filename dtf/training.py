@@ -244,7 +244,7 @@ def add_model_specific_args(parser: ArgumentParser) -> ArgumentParser:
 
     parser.add_argument("--max_steps", type=int, default=1000)
     parser.add_argument("--n_vectors", type=int, default=6)
-    parser.add_argument("--ortho", default=False)
+    parser.add_argument("--ortho", action="store_true", default=False)
     parser.add_argument(
         "--scheduler_criterion", nargs="+", type=str, default=["imbalance2/mean"]
     )  # None)

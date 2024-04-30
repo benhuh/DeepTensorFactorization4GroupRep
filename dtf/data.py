@@ -167,12 +167,10 @@ class ArithmeticDataset(TensorDataset):
             data, self.M = self._get_layer_structure(task)
         else:
             raise ValueError(f"unsupported task: {task}")
-
         if vector_task:
             data = self._get_vectorized_data(
                 self.M, total_batch=2.0, ortho=ortho, n_vectors=n_vectors
             )
-
         data = shuffle_data(
             data, self.rng, data_type, noise_level=noise_level, shuffle=shuffle
         )
@@ -328,7 +326,7 @@ class ArithmeticDataset(TensorDataset):
         M = torch.sparse_coo_tensor(
             coo.T, torch.ones(coo.shape[0]).bool(), size=(N**2, N, N)
         )
-        M = M.permute(1, 0, 2)
+        M = M.permute(1, 0, 2)  # this was originally uncommented
 
         data = get_data_from_M(M.to_dense() + 0.0, shapes_start=1)
         return data, M
@@ -355,12 +353,14 @@ class ArithmeticDataset(TensorDataset):
         # w = fixed weights
         # w = torch.Tensor(np.arange(6) / 100)
         torch.manual_seed(2)
-        w = torch.randn(6, n_vectors) / np.sqrt(6)  # fix a random seed
+        w = torch.randn(M.shape[1], n_vectors) / np.sqrt(
+            M.shape[1]
+        )  # fix a random seed
         # you can choose if you want orthogonal weights or not
-        if ortho == "True":
+        if ortho:
             svd = torch.linalg.svd(w)
-            print(svd[0].shape, svd[1].shape, svd[2].shape)
             w = svd[0] @ svd[2]
+        self.w = w
         # w = torch.tile(w, (x.shape[0], 1))
         # xy = torch.stack((x, w),dim=1)
         xy = [x, w]

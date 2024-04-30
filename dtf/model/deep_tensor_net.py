@@ -119,6 +119,12 @@ class Deep_Tensor_Net(Base_Model):
         tensor_size_list, idx_appearance_dict, input_str_list, ext_indices, _ = (
             get_tensor_size(N, r, einsum_str)
         )
+
+        # M = 6 x 36 x 6
+        # 72x6
+        # T =  6 x 6 x 6
+        # self.layer_type = "FC"
+        self.layer_type = "FC"
         if self.layer_type == "FC":  # Hack for now
             tensor_size_list[0] = [N**2, N, N]
 
@@ -131,7 +137,6 @@ class Deep_Tensor_Net(Base_Model):
         self.layers = self.initialize_Tensors(
             tensor_size_list, init_scale
         )  # , random_init)
-
         self.N = N
         W = self.net_Weight
         self.W_shape_cum = get_W_shape_cum(W)
@@ -220,9 +225,12 @@ class Deep_Tensor_Net_conv(Deep_Tensor_Net):
         n_vectors = kwargs.get("n_vectors", 1)
         # convolution weights
         # self.conv_weight = nn.Parameter(init_scale * torch.randn(3, 3) / math.sqrt(2))
-        self.conv_weight = nn.Parameter(
-            init_scale * torch.randn(6, n_vectors)
-        )  # should match data.py line 309
+        if self.layer_type == "FC":
+            self.conv_weight = nn.Parameter(
+                init_scale * torch.randn(6**2, n_vectors)
+            )  # should match data.py line 309
+        else:
+            self.conv_weight = nn.Parameter(init_scale * torch.randn(6, n_vectors))
 
     def read_from_Tensor(self, W, x):
         if x.dtype == torch.int64:  # x is tensor of indices
