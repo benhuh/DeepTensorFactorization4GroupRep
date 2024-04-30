@@ -255,14 +255,14 @@ out, save_name = train(
     train_frac,
     seed=seed,
     val_check_interval=5,
-    lr=0.001,
+    lr=0.01,
     optim="Adam",
     model="Deep_Tensor_Net_conv",
-    conv_weight_decay=0.1,
+    conv_weight_decay=0.9,
     max_steps=4000,
     n_vectors=36,
     ortho=False,
-)  # SGD - lr = 0.005, Adam - lr = 0.001
+)  # conv: SGD - lr = 0.005, Adam - lr = 0.001, fc: Adam - lr = 0.01
 (model, datamodule, trainer) = out
 
 trained, desired = check_model(model, datamodule, n_vectors=36)
