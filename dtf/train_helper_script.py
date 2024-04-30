@@ -73,9 +73,13 @@ def run_exp(
 ):  # , model0=None
     args = get_args(train_frac=train_frac, **kwargs)
     args_str = get_args_str(args)
+
     if extra_args_str is not None:
         args_str += extra_args_str  #' --use_different_logger'        # args_str += ' --record_wg_hist 1'
     hparams = get_hparams(args_str.split(), default_kwargs=default_kwargs)
+    import pdb
+
+    pdb.set_trace()
     model, datamodule, trainer = get_model_pkg(hparams)
 
     if train_flag:

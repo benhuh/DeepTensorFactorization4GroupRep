@@ -120,12 +120,7 @@ class Deep_Tensor_Net(Base_Model):
             get_tensor_size(N, r, einsum_str)
         )
 
-        # M = 6 x 36 x 6
-        # 72x6
-        # T =  6 x 6 x 6
-        # self.layer_type = "FC"
-        self.layer_type = "FC"
-        if self.layer_type == "FC":  # Hack for now
+        if self.layer_type == "FC":
             tensor_size_list[0] = [N**2, N, N]
 
         self.einsum_str = einsum_str

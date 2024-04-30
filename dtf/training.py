@@ -322,6 +322,8 @@ def get_hparams(*args, default_kwargs=None, parser=None) -> Namespace:
 
     model_parser = LITmodel.get_model_parser(hparams.model)
     hparams2, unknown_ = model_parser.parse_known_args(unknown)
+    if "layer/" in hparams.task_name:
+        hparams2.layer_type = "FC"
     hparams = Namespace(**vars(hparams), **vars(hparams2))
 
     if len(unknown_) > 0:
