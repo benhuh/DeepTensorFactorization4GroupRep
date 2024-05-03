@@ -14,7 +14,12 @@ from dtf.visualization_new import (
     reorder_tensor,
     plot_netWeight_with_train_data,
 )
-from dtf.visualization_new import optimize_T, plot_heatmaps, check_model
+from dtf.visualization_new import (
+    optimize_T,
+    plot_heatmaps,
+    plot_heatmaps_h,
+    check_model,
+)
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -49,7 +54,7 @@ def train(
     ortho=False,
 ):
     # original lr = 0.5/2
-    momentum, counter_threshold = 0.5, "0 1000"  #'30 90'
+    momentum, counter_threshold = 0.5, "0 0"  #'30 90'
 
     save_name = get_save_name(task_name, train_frac, seed, add_str)
     extra_args_str = ""
@@ -265,7 +270,7 @@ out, save_name = train(
 )  # conv: SGD - lr = 0.005, Adam - lr = 0.001, fc: Adam - lr = 0.01
 (model, datamodule, trainer) = out
 
-trained, desired = check_model(model, datamodule, n_vectors=36)
+# trained, desired = check_model(model, datamodule, n_vectors=36)
 # print("Trained: ", trained)
 # print("Desired: ", desired)
 
@@ -285,12 +290,12 @@ opt_V, opt_T, losses = optimize_T(
 )
 
 # original
-fig = plot_heatmaps(model_weight, train_M)
+fig = plot_heatmaps_h(model_weight, train_M)
 plt.show()
 plt.close()
 
 # optimized
-fig = plot_heatmaps(opt_T, train_M, opt_V)
+fig = plot_heatmaps_h(opt_T, train_M, opt_V)
 plt.show()
 plt.close()
 # import pdb; pdb.set_trace()

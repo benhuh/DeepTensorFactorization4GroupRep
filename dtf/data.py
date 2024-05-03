@@ -164,7 +164,10 @@ class ArithmeticDataset(TensorDataset):
                 task, task_rank, operand_length, data_type
             )  # , loss_type
         elif "layer/" in task:
-            data, self.M = self._get_layer_structure(task)
+            # data, self.M = self._get_layer_structure(task)
+            data, self.M, self.factors = self.make_data(
+                task, task_rank, operand_length, data_type
+            )
         else:
             raise ValueError(f"unsupported task: {task}")
         if vector_task:
@@ -196,7 +199,11 @@ class ArithmeticDataset(TensorDataset):
         self, operator: str, data_type: str, operands=None
     ) -> List[str]:
         N = self.tensor_width
-        operator = operator.split("binary/")[1]
+        if "binary/" in operator:
+            operator = operator.split("binary/")[1]
+        elif "layer/" in operator:
+            operator_h = "binary/sym3_xy_vec"
+            operator = operator_h.split("binary/")[1]
         if operator == "+-+-":  # composit
             operator = ["+", "-", "-&+", "-&-"]
         else:
@@ -405,6 +412,10 @@ class ArithmeticDataset(TensorDataset):
         factors = None
 
         if "binary/" in task:
+            data, M, factors = self._make_binary_operation_data(
+                task, data_type, operands=None
+            )
+        elif "layer/" in task:
             data, M, factors = self._make_binary_operation_data(
                 task, data_type, operands=None
             )

@@ -73,6 +73,199 @@ def check_model(model, datamodule, n_vectors):
     return trained, desired
 
 
+def plot_heatmaps_h(trained, desired, opt_V=None):
+    """
+    Plots heatmaps of the trained and desired products between the product structure
+    tensor and the convolution weights, as well as the orthogonal matrix that best
+    aligns the product tensor and the generating data.
+
+    In this version, we assume the generating tensor M is of size (D, D, D) but the
+    learnt tensor T is of size (D, D^2, D). We want to evaluate the degree to which
+    T is able to find the sparse structure.
+
+    Parameters
+    ----------
+    trained: PyTorch tensor of size (D, D, D) or (D, D^2, D) or (D, D)
+        Learned products.
+    desired: PyTorch tensor of size (D, D, D) or (D, D)
+        Desired products.
+    opt_V: PyTorch tensor of size (D, D) or (D^2, D^2)
+        Orthogonal matrix that best aligns the product tensor and the generating data.
+
+    Returns
+    -------
+    fig: Matplotlib figure
+        The figure containing the heatmaps.
+    """
+
+    # make subplots
+    base_w = 1
+    base_h = 1
+    if len(trained.shape) == 2:
+        if opt_V is None:
+            fig = plt.figure(figsize=(int(2 * base_w), int(2 * base_h)))
+            gs = gridspec.GridSpec(int(2 * base_h), int(2 * base_w))
+        else:
+            fig = plt.figure(
+                figsize=(int(6 * base_w), int(2 * base_h))
+            )  # 1 for annot, 1 for trained, 2 for opt_V, 2 for opt_V.T @ opt_V
+            gs = gridspec.GridSpec(int(2 * base_h), int(6 * base_w))
+        p = 1
+    else:
+        if trained.shape[1] != trained.shape[2]:  # FC case
+            if opt_V is None:
+                fig = plt.figure(figsize=(int(7 * base_w), int(7 * base_h)))
+                # w: 1 for annot, 6 for trained
+                # h: 1 for each of the 6 products of trained and 1 for desired
+                gs = gridspec.GridSpec(int(7 * base_h), int(7 * base_w))
+            else:
+                fig = plt.figure(
+                    figsize=(int(11 * base_w), int(7 * base_h))
+                )  # 1 for annot, 6 for trained, 2 for opt_V, 2 for opt_V.T @ opt_V
+                gs = gridspec.GridSpec(int(7 * base_h), int(11 * base_w))
+            p = 6
+        else:  # conv case
+            if opt_V is None:
+                fig = plt.figure(
+                    figsize=(int(7 * base_w), int(2 * base_h))
+                )  # 1 for annot, 6 for trained
+                gs = gridspec.GridSpec(int(2 * base_h), int(7 * base_w))
+            else:
+                fig = plt.figure(
+                    figsize=(int(11 * base_w), int(2 * base_h))
+                )  # 1 for annot, 6 for trained, 2 for opt_V, 2 for opt_V.T @ opt_V
+                gs = gridspec.GridSpec(int(2 * base_h), int(11 * base_w))
+            p = 6
+
+    # color maps
+    cmap = sns.cubehelix_palette(reverse=True, rot=-0.2, as_cmap=True)
+    cmap_r = sns.cubehelix_palette(reverse=True, start=0, rot=0.2, as_cmap=True)
+    cmap_y = sns.cubehelix_palette(reverse=True, start=0, rot=0.6, as_cmap=True)
+
+    # side labels
+    if trained.shape[1] != trained.shape[2]:
+        base_d = 0
+        base_t = 3
+    else:
+        base_d = 0
+        base_t = 1
+    ax = plt.subplot(gs[base_d, 0])
+    ax.annotate(
+        "Desired",
+        xy=(0.5, 0.5),
+        xytext=(0.5, 0.5),
+        textcoords="axes fraction",
+        ha="center",
+        va="center",
+        fontsize=14,
+        fontweight="bold",
+    )
+    ax.grid(False)
+    ax.set_facecolor("white")
+    # plt.axis("off")
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+
+    ax = plt.subplot(gs[base_t, 0])
+    ax.annotate(
+        "Trained",
+        xy=(0.5, 0.5),
+        xytext=(0.5, 0.5),
+        textcoords="axes fraction",
+        ha="center",
+        va="center",
+        fontsize=14,
+        fontweight="bold",
+    )
+    ax.grid(False)
+    ax.set_facecolor("white")
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+
+    for idx in range(1, p + 1):
+        if trained.shape[1] != trained.shape[2]:
+            for jdx in range(p):
+                if jdx == 0:
+                    ax = plt.subplot(gs[jdx, idx])
+                    desired_norm = desired[:, idx - 1, :].detach().numpy()
+                    sns.heatmap(
+                        desired_norm,
+                        ax=ax,
+                        cmap=cmap,
+                        cbar=False,
+                        square=True,
+                        xticklabels=False,
+                        yticklabels=False,
+                    )
+
+                ax = plt.subplot(gs[jdx + 1, idx])
+                trained_norm = trained[:, jdx * p + idx - 1, :].detach().numpy()
+                sns.heatmap(
+                    trained_norm,
+                    ax=ax,
+                    cmap=cmap_y,
+                    cbar=False,
+                    square=True,
+                    xticklabels=False,
+                    yticklabels=False,
+                )
+        else:
+            ax = plt.subplot(gs[0, idx])
+            desired_norm = desired[:, idx - 1, :].detach().numpy()
+            sns.heatmap(
+                desired_norm,
+                ax=ax,
+                cmap=cmap,
+                cbar=False,
+                square=True,
+                xticklabels=False,
+                yticklabels=False,
+            )
+
+            ax = plt.subplot(gs[1, idx])
+            trained_norm = trained[:, idx - 1, :].detach().numpy()
+            sns.heatmap(
+                trained_norm,
+                ax=ax,
+                cmap=cmap_y,
+                cbar=False,
+                square=True,
+                xticklabels=False,
+                yticklabels=False,
+            )
+
+    if opt_V is not None:
+        # orthogonal plot
+        ax = plt.subplot(gs[:, p + 1 : p + 3])
+        ax.set_title(r"$\boldsymbol{V}$ matrix", fontweight="bold", fontsize=14)
+        opt_V_norm = opt_V.detach().numpy()
+        sns.heatmap(
+            opt_V_norm,
+            ax=ax,
+            cmap=cmap_r,
+            cbar=False,
+            square=True,
+            xticklabels=False,
+            yticklabels=False,
+        )
+
+        ax = plt.subplot(gs[:, p + 3 :])
+        ax.set_title(
+            r"$\boldsymbol{V}^T\boldsymbol{V}$", fontweight="bold", fontsize=14
+        )
+        opt_O_norm = (opt_V.T @ opt_V).detach().numpy()
+        sns.heatmap(
+            opt_O_norm,
+            ax=ax,
+            cmap=cmap_r,
+            cbar=False,
+            square=True,
+            xticklabels=False,
+            yticklabels=False,
+        )
+    return fig
+
+
 def plot_heatmaps(trained, desired, opt_V=None):
     """
     Plots heatmaps of the trained and desired products between the product structure
