@@ -196,6 +196,8 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
                         square=True,
                         xticklabels=False,
                         yticklabels=False,
+                        vmin=0,
+                        vmax=1,
                     )
 
                 ax = plt.subplot(gs[jdx + 1, idx])
@@ -208,6 +210,8 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
                     square=True,
                     xticklabels=False,
                     yticklabels=False,
+                    vmin=0,
+                    vmax=1,
                 )
         else:
             ax = plt.subplot(gs[0, idx])
@@ -220,6 +224,8 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
                 square=True,
                 xticklabels=False,
                 yticklabels=False,
+                vmin=0,
+                vmax=1,
             )
 
             ax = plt.subplot(gs[1, idx])
@@ -232,6 +238,8 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
                 square=True,
                 xticklabels=False,
                 yticklabels=False,
+                vmin=0,
+                vmax=1,
             )
 
     if opt_V is not None:
@@ -247,6 +255,8 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
             square=True,
             xticklabels=False,
             yticklabels=False,
+            vmin=0,
+            vmax=1,
         )
 
         ax = plt.subplot(gs[:, p + 3 :])
@@ -262,6 +272,8 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
             square=True,
             xticklabels=False,
             yticklabels=False,
+            vmin=0,
+            vmax=1,
         )
     return fig
 

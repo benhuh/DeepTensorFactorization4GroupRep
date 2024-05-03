@@ -284,9 +284,9 @@ opt_V, opt_T, losses = optimize_T(
     V,
     train_M,
     lr=1e-1,  # conv: 1e-2, fc: 1e-1
-    reg_coeff=0.5,  # conv: 1.0, fc: 0.5
+    reg_coeff=2,  # conv: 1.0, fc: 0.5
     loss_type="sparse_inv",
-    steps=10000,  # conv: 1000, fc: 10000
+    steps=1000,  # conv: 1000, fc: 10000
 )
 
 # original
