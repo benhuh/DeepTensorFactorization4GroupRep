@@ -59,22 +59,28 @@ opt_V, opt_T, losses = optimize_T(
 
 # original
 fig = plot_heatmaps_h(model_weight, train_M)
+plt.savefig("heatmap_ori.pdf")
 plt.show()
 plt.close()
 
 # optimized
 fig = plot_heatmaps_h(opt_T, train_M, opt_V)
+plt.savefig("heatmap_opt.pdf")
 plt.show()
 plt.close()
 
 # plot the singular values
+print(model_weight.shape)
 unfolded_B = model_weight.permute(0, 2, 1)
 unfolded_B = unfolded_B.reshape(-1, model_weight.shape[1])
 u, s, vh = torch.linalg.svd(unfolded_B)
+
+plt.figure()
 plt.scatter(range(len(s)), s.cpu().numpy())
 plt.ylabel("Singular Value")
 plt.xlabel("Index")
 plt.title("Singular Values of the learnt tensor")
+plt.savefig("singular_tens.pdf")
 plt.show()
 plt.close()
 
@@ -83,5 +89,35 @@ plt.scatter(range(len(s)), s.cpu().numpy())
 plt.ylabel("Singular Value")
 plt.xlabel("Index")
 plt.title("Singular Values of the learnt weights")
+plt.savefig("singular_weig.pdf")
+plt.show()
+plt.close()
+
+# s only has 6 non zero singular values
+# low_dim = (
+#     (u[:, :6] @ torch.diag(s[:6]))
+#     .reshape(model_weight.shape[0], model_weight.shape[2], -1)
+#     .permute(0, 2, 1)
+# )
+low_dim = u[:, :6] @ torch.diag(s[:6])
+# V_r = torch.eye(low_dim.shape[1])
+# opt_Vr, opt_Tr, losses = optimize_T(
+#     low_dim / (low_dim.norm()) * train_M.norm(),
+#     V_r,
+#     train_M,
+#     lr=1e-2,  # conv: 1e-2, fc: 1e-1
+#     reg_coeff=2,  # conv: 1.0, fc: 0.5
+#     loss_type="sparse_inv",
+#     steps=1000,  # conv: 1000, fc: 10000
+# )
+# print(opt_Tr.shape)
+# print(opt_Vr.shape)
+# opt_Tr = u[:, :6] @ torch.diag(s[:6]) @ opt_Tr
+# # opt_Tr = opt_Tr @ torch.diag(s[:6]) @ vh[:6, :]
+opt_Tr = low_dim.reshape(model_weight.shape[0], model_weight.shape[2], -1)
+opt_Tr = opt_Tr.permute(0, 2, 1)
+# optimized
+fig = plot_heatmaps_h(opt_Tr, train_M, vh)
+plt.savefig("heatmap_svd.pdf")
 plt.show()
 plt.close()

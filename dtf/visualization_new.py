@@ -596,9 +596,15 @@ def diagonalize_T(T, V, loss_type, fit_index=None):  # fit_index=[0,1,2]
         T = T.to(V.dtype)
 
     if loss_type == "regular" or loss_type == "sparse":  # if inv_or_trans=='trans':
-        T_ = torch.einsum("ijk,jl->ilk", T, V.T)  # assumes T = M @ V
+        if len(T.shape) == 3:
+            T_ = torch.einsum("ijk,jl->ilk", T, V.T)  # assumes T = M @ V
+        else:
+            T_ = torch.einsum("ij,jl->il", T, V.T)
     elif loss_type == "regular_inv" or loss_type == "sparse_inv":
-        T_ = torch.einsum("ijk,jl->ilk", T, V.inverse())  # assumes T = M @ V
+        if len(T.shape) == 3:
+            T_ = torch.einsum("ijk,jl->ilk", T, V.inverse())  # assumes T = M @ V
+        else:
+            T_ = torch.einsum("ij,jl->il", T, V.inverse())
     # else:
     #     T_ = torch.einsum('ijk,jl->ilk', T, V.inverse())  # assumes T = M @ V
     return T_
