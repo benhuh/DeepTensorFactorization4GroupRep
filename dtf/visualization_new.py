@@ -189,7 +189,7 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
                     ax = plt.subplot(gs[jdx, idx])
                     desired_norm = desired[:, idx - 1, :].detach().numpy()
                     sns.heatmap(
-                        desired_norm,
+                        desired_norm / desired[:, idx - 1, :].norm(),
                         ax=ax,
                         cmap=cmap,
                         cbar=False,
@@ -203,7 +203,7 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
                 ax = plt.subplot(gs[jdx + 1, idx])
                 trained_norm = trained[:, jdx * p + idx - 1, :].detach().numpy()
                 sns.heatmap(
-                    trained_norm,
+                    trained_norm / trained[:, jdx * p + idx - 1, :].norm(),
                     ax=ax,
                     cmap=cmap_y,
                     cbar=False,
@@ -217,7 +217,7 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
             ax = plt.subplot(gs[0, idx])
             desired_norm = desired[:, idx - 1, :].detach().numpy()
             sns.heatmap(
-                desired_norm,
+                desired_norm / desired[:, idx - 1, :].norm(),
                 ax=ax,
                 cmap=cmap,
                 cbar=False,
@@ -231,7 +231,7 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
             ax = plt.subplot(gs[1, idx])
             trained_norm = trained[:, idx - 1, :].detach().numpy()
             sns.heatmap(
-                trained_norm,
+                trained_norm / trained[:, idx - 1, :].norm(),
                 ax=ax,
                 cmap=cmap_y,
                 cbar=False,
@@ -622,17 +622,18 @@ def optimize_T(
     loss_all=None,
     idx_sort=None,
     idx_sign=None,
+    low_dim=False,
 ):
     """
     Finds a matrix V that best aligns the product tensor T with the generating tensor M. Assumes that T = M @ V.
 
     Parameters
     ----------
-    T: PyTorch tensor of size (D, D, D)
+    T: PyTorch tensor of size (D, D(^2), D)
         Unoptimized proudct structure tensor.
     V: PyTorch tensor of size (D, D)
         Matrix to optimize.
-    M: PyTorch tensor of size (D, D, D)
+    M: PyTorch tensor of size (D, D(^2), D)
         Generating tensor.
     loss_type: str
         Type of loss to use. Can be
@@ -656,23 +657,30 @@ def optimize_T(
     -------
     V: PyTorch tensor of size (D, D)
         Optimized matrix.
-    T_: PyTorch tensor of size (D, D, D)
+    T_: PyTorch tensor of size (D, D(^2), D)
         Optimized product structure tensor.
     loss: float
         List of loss values.
     """
     if loss_type in ["exact", "exact_inv"]:
+        # if low_dim:
+        #     # regime with FC:
+        #         # T is (6, 36, 6) -> (36, 36)
+        #         # M is (6, 6, 6) -> (36, 6)
+        #     # T_p = T.permute(0, 2, 1)
         # permute the indices first
         T_p = T.permute(0, 2, 1)
         T_p = T_p.reshape(-1, T.shape[1])
         M_p = M.permute(0, 2, 1)
         M_p = M_p.reshape(-1, M.shape[1])
         # V = T[:, 0, :] @ torch.linalg.pinv(M[:, 0, :]) # should be the same for every slice
+
+        # Then pinv?
         V = torch.linalg.pinv(M_p) @ T_p
         if loss_type == "exact":
             opt_T = torch.einsum("ijk,jl->ilk", T, V.T)
         elif loss_type == "exact_inv":
-            opt_T = torch.einsum("ijk,jl->ilk", T, V.inverse())
+            opt_T = torch.einsum("ijk,jl->ilk", T, torch.linalg.pinv(V))
         loss = (opt_T - M).pow(2).mean()
         return V, opt_T, loss
 
