@@ -52,9 +52,9 @@ opt_V, opt_T, losses = optimize_T(
     V,
     train_M,
     lr=1e-3,  # conv: 1e-2, fc: 1e-1
-    reg_coeff=0.0,  # conv: 1.0, fc: 0.5
-    loss_type="sparse_inv",
-    steps=100000,  # conv: 1000, fc: 10000
+    reg_coeff=5.0,  # conv: 1.0, fc: 0.5
+    loss_type="exact_inv",
+    steps=10000,  # conv: 1000, fc: 10000
 )
 
 # original
@@ -116,7 +116,8 @@ plt.show()
 #     .reshape(model_weight.shape[0], model_weight.shape[2], -1)
 #     .permute(0, 2, 1)
 # )
-low_dim = u[:, :6] @ torch.diag(s[:6])
+# low_dim = u[:, :6] @ torch.diag(s[:6])
+low_dim = u[:, :6] @ torch.diag(s[:6])  # @ vh[:6, :]
 V_r = torch.eye(low_dim.shape[1])
 # opt_Vr, opt_Tr, losses = optimize_T(
 #     low_dim / (low_dim.norm()) * train_M.norm(),
@@ -134,7 +135,7 @@ opt_Vr, opt_Tr, losses = optimize_T(
     lr=1e-1,  # conv: 1e-2, fc: 1e-1
     reg_coeff=5,  # conv: 1.0, fc: 0.5
     loss_type="exact_inv",
-    low_dim=True,
+    # low_dim=True,
     steps=1000,  # conv: 1000, fc: 10000
 )
 # print(opt_Tr.shape)
@@ -149,5 +150,33 @@ fig = plot_heatmaps_h(low_Tr, train_M)
 plt.show()
 fig = plot_heatmaps_h(opt_Tr, train_M, V_r)
 plt.savefig("heatmap_svd.pdf")
+plt.show()
+plt.close()
+
+
+# synthetic
+T_s = torch.zeros_like(model_weight)
+T_s[:, 0, :] = train_M[:, 0, :]
+T_s[:, 6, :] = train_M[:, 1, :]
+T_s[:, 12, :] = train_M[:, 2, :]
+T_s[:, 18, :] = train_M[:, 3, :]
+T_s[:, 24, :] = train_M[:, 4, :]
+T_s[:, 30, :] = train_M[:, 5, :]
+
+V_s = torch.eye(T_s.shape[1])
+opt_Vs, opt_Ts, losses = optimize_T(
+    T_s / (T_s.norm()) * train_M.norm(),
+    V_s,
+    train_M,
+    lr=1e-1,  # conv: 1e-2, fc: 1e-1
+    reg_coeff=5,  # conv: 1.0, fc: 0.5
+    loss_type="exact_inv",
+    low_dim=True,
+    steps=1000,  # conv: 1000, fc: 10000
+)
+
+# synthetic
+fig = plot_heatmaps_h(opt_Ts, train_M, opt_Vs)
+plt.savefig("heatmap_synth.pdf")
 plt.show()
 plt.close()

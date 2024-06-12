@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import seaborn as sns
 from matplotlib import cm, rc
+import matplotlib
 
 rc("text", usetex=True)
 rc("text.latex", preamble=r"\usepackage{amsmath}")
@@ -138,7 +139,8 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
             p = 6
 
     # color maps
-    cmap = sns.cubehelix_palette(reverse=True, rot=-0.2, as_cmap=True)
+    cmap = matplotlib.cm.get_cmap("seismic")
+    # cmap = sns.cubehelix_palette(reverse=True, rot=-0.2, as_cmap=True)
     cmap_r = sns.cubehelix_palette(reverse=True, start=0, rot=0.2, as_cmap=True)
     cmap_y = sns.cubehelix_palette(reverse=True, start=0, rot=0.6, as_cmap=True)
 
@@ -187,58 +189,94 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
             for jdx in range(p):
                 if jdx == 0:
                     ax = plt.subplot(gs[jdx, idx])
-                    desired_norm = desired[:, idx - 1, :].detach().numpy()
+                    desired_norm = (
+                        (
+                            torch.sign(desired[:, idx - 1, :])
+                            * desired[:, idx - 1, :].abs().sqrt()
+                        )
+                        .detach()
+                        .numpy()
+                    )
                     sns.heatmap(
-                        desired_norm / desired[:, idx - 1, :].norm(),
+                        desired_norm,
                         ax=ax,
                         cmap=cmap,
                         cbar=False,
                         square=True,
                         xticklabels=False,
                         yticklabels=False,
-                        vmin=0,
+                        vmin=-1,
                         vmax=1,
                     )
 
                 ax = plt.subplot(gs[jdx + 1, idx])
-                trained_norm = trained[:, jdx * p + idx - 1, :].detach().numpy()
+                trained_norm = (
+                    (
+                        torch.sign(trained[:, jdx * p + idx - 1, :])
+                        * trained[:, jdx * p + idx - 1, :].abs().sqrt()
+                    )
+                    .detach()
+                    .numpy()
+                )
                 sns.heatmap(
-                    trained_norm / trained[:, jdx * p + idx - 1, :].norm(),
+                    trained_norm,
                     ax=ax,
-                    cmap=cmap_y,
+                    cmap=cmap,
                     cbar=False,
                     square=True,
                     xticklabels=False,
                     yticklabels=False,
-                    vmin=0,
+                    vmin=-1,
                     vmax=1,
                 )
         else:
             ax = plt.subplot(gs[0, idx])
-            desired_norm = desired[:, idx - 1, :].detach().numpy()
+            desired_norm = (
+                (
+                    torch.sign(desired[:, idx - 1, :])
+                    * desired[:, idx - 1, :].abs().sqrt()
+                )
+                .detach()
+                .numpy()
+            )
             sns.heatmap(
-                desired_norm / desired[:, idx - 1, :].norm(),
+                desired_norm,
                 ax=ax,
                 cmap=cmap,
                 cbar=False,
                 square=True,
                 xticklabels=False,
                 yticklabels=False,
-                vmin=0,
+                vmin=-1,
                 vmax=1,
             )
 
             ax = plt.subplot(gs[1, idx])
-            trained_norm = trained[:, idx - 1, :].detach().numpy()
+            desired_norm = (
+                (
+                    torch.sign(desired[:, idx - 1, :])
+                    * desired[:, idx - 1, :].abs().sqrt()
+                )
+                .detach()
+                .numpy()
+            )
+            trained_norm = (
+                (
+                    torch.sign(trained[:, idx - 1, :])
+                    * trained[:, idx - 1, :].abs().sqrt()
+                )
+                .detach()
+                .numpy()
+            )
             sns.heatmap(
-                trained_norm / trained[:, idx - 1, :].norm(),
+                trained_norm,
                 ax=ax,
-                cmap=cmap_y,
+                cmap=cmap,
                 cbar=False,
                 square=True,
                 xticklabels=False,
                 yticklabels=False,
-                vmin=0,
+                vmin=-1,
                 vmax=1,
             )
 
@@ -250,12 +288,12 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
         sns.heatmap(
             opt_V_norm,
             ax=ax,
-            cmap=cmap_r,
+            cmap=cmap,
             cbar=False,
             square=True,
             xticklabels=False,
             yticklabels=False,
-            vmin=0,
+            vmin=-1,
             vmax=1,
         )
 
@@ -263,16 +301,16 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
         ax.set_title(
             r"$\boldsymbol{V}^T\boldsymbol{V}$", fontweight="bold", fontsize=14
         )
-        opt_O_norm = (opt_V.T @ opt_V).detach().numpy()
+        opt_O_norm = (opt_V @ opt_V.T).detach().numpy()
         sns.heatmap(
             opt_O_norm,
             ax=ax,
-            cmap=cmap_r,
+            cmap=cmap,
             cbar=False,
             square=True,
             xticklabels=False,
             yticklabels=False,
-            vmin=0,
+            vmin=-1,
             vmax=1,
         )
     return fig
@@ -694,9 +732,11 @@ def optimize_T(
         T_ = diagonalize_T(
             T, V, loss_type, fit_index=fit_index
         )  # ABC_ = diagonalize(ABC, V, loss_type='sparse', fit_index=fit_index)
+        # V.T @ V = I works when M and T are the same shape, but not
+        # when T is (D, D^2, D)
         loss = (
             loss_fn(T_, M)
-            + reg_coeff * (V.T @ V - torch.eye(V.shape[0]).to(V.device)).pow(2).mean()
+            + reg_coeff * (V @ V.T - torch.eye(V.shape[1]).to(V.device)).pow(2).mean()
         )
         loss.backward()
         optim.step()
