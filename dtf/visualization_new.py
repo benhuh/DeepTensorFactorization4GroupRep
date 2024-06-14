@@ -99,7 +99,18 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
         The figure containing the heatmaps.
     """
 
-    # make subplots
+    # color maps
+    cmap = matplotlib.cm.get_cmap("seismic")
+    # cmap = sns.cubehelix_palette(reverse=True, rot=-0.2, as_cmap=True)
+    # cmap_r = sns.cubehelix_palette(reverse=True, start=0, rot=0.2, as_cmap=True)
+    # cmap_y = sns.cubehelix_palette(reverse=True, start=0, rot=0.6, as_cmap=True)
+
+    ### MAKE SUBPLOTS ###
+    # We create the correct subplot sizes:
+    # - if we have 2D tensors we only need 4 grid spots (2 annots and 2 plots)
+    # - if we have 3D tensors we need
+    # - 2 for annot, 6 for trained and 6 for desired, 2 for opt_V, 2 for opt_V.T @ opt_V (for conv)
+    # - 2 for annot, 6x6 for trained and 6 for desired, 2 for opt_V, 2 for opt_V.T @ opt_V (for FC)
     base_w = 1
     base_h = 1
     if len(trained.shape) == 2:
@@ -137,14 +148,10 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
                 )  # 1 for annot, 6 for trained, 2 for opt_V, 2 for opt_V.T @ opt_V
                 gs = gridspec.GridSpec(int(2 * base_h), int(11 * base_w))
             p = 6
+    ####################################
 
-    # color maps
-    cmap = matplotlib.cm.get_cmap("seismic")
-    # cmap = sns.cubehelix_palette(reverse=True, rot=-0.2, as_cmap=True)
-    cmap_r = sns.cubehelix_palette(reverse=True, start=0, rot=0.2, as_cmap=True)
-    cmap_y = sns.cubehelix_palette(reverse=True, start=0, rot=0.6, as_cmap=True)
-
-    # side labels
+    ### MAKE ANNOTATIONS ###
+    # We put anotations in the first column for "Desired" and "Trained" tensors
     if trained.shape[1] != trained.shape[2]:
         base_d = 0
         base_t = 3
@@ -183,17 +190,22 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
     ax.set_facecolor("white")
     ax.set_xticklabels([])
     ax.set_yticklabels([])
+    ####################################
 
+    ### PLOT DESIRED AND TRAINED TENSORS ###
+    # We plot the desired and trained tensors (unfortunately this requires some
+    # reasoning)
     for idx in range(1, p + 1):
         if trained.shape[1] != trained.shape[2]:
             for jdx in range(p):
                 if jdx == 0:
                     ax = plt.subplot(gs[jdx, idx])
                     desired_norm = (
-                        (
-                            torch.sign(desired[:, idx - 1, :])
-                            * desired[:, idx - 1, :].abs().sqrt()
-                        )
+                        # (
+                        #     torch.sign(desired[:, idx - 1, :])
+                        #     * desired[:, idx - 1, :].abs().sqrt()
+                        # )
+                        desired[:, idx - 1, :]
                         .detach()
                         .numpy()
                     )
@@ -211,10 +223,11 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
 
                 ax = plt.subplot(gs[jdx + 1, idx])
                 trained_norm = (
-                    (
-                        torch.sign(trained[:, jdx * p + idx - 1, :])
-                        * trained[:, jdx * p + idx - 1, :].abs().sqrt()
-                    )
+                    # (
+                    #     torch.sign(trained[:, jdx * p + idx - 1, :])
+                    #     * trained[:, jdx * p + idx - 1, :].abs().sqrt()
+                    # )
+                    trained[:, jdx * p + idx - 1, :]
                     .detach()
                     .numpy()
                 )
@@ -232,10 +245,11 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
         else:
             ax = plt.subplot(gs[0, idx])
             desired_norm = (
-                (
-                    torch.sign(desired[:, idx - 1, :])
-                    * desired[:, idx - 1, :].abs().sqrt()
-                )
+                # (
+                #     torch.sign(desired[:, idx - 1, :])
+                #     * desired[:, idx - 1, :].abs().sqrt()
+                # )
+                desired[:, idx - 1, :]
                 .detach()
                 .numpy()
             )
@@ -252,19 +266,12 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
             )
 
             ax = plt.subplot(gs[1, idx])
-            desired_norm = (
-                (
-                    torch.sign(desired[:, idx - 1, :])
-                    * desired[:, idx - 1, :].abs().sqrt()
-                )
-                .detach()
-                .numpy()
-            )
             trained_norm = (
-                (
-                    torch.sign(trained[:, idx - 1, :])
-                    * trained[:, idx - 1, :].abs().sqrt()
-                )
+                # (
+                #     torch.sign(trained[:, idx - 1, :])
+                #     * trained[:, idx - 1, :].abs().sqrt()
+                # )
+                trained[:, idx - 1, :]
                 .detach()
                 .numpy()
             )
@@ -279,7 +286,12 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
                 vmin=-1,
                 vmax=1,
             )
+    ####################################
 
+    ### PLOT V ###
+    # In case we have optimized tensors (or we have some other tensor we'd
+    # like to plot) we plot them in the last four columns (larger than the
+    # rest) along with V.T @ V
     if opt_V is not None:
         # orthogonal plot
         ax = plt.subplot(gs[:, p + 1 : p + 3])
@@ -299,7 +311,7 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
 
         ax = plt.subplot(gs[:, p + 3 :])
         ax.set_title(
-            r"$\boldsymbol{V}^T\boldsymbol{V}$", fontweight="bold", fontsize=14
+            r"$\boldsymbol{V}\boldsymbol{V}^T$", fontweight="bold", fontsize=14
         )
         opt_O_norm = (opt_V @ opt_V.T).detach().numpy()
         sns.heatmap(
@@ -313,6 +325,7 @@ def plot_heatmaps_h(trained, desired, opt_V=None):
             vmin=-1,
             vmax=1,
         )
+    ####################################
     return fig
 
 

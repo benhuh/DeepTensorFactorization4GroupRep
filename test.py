@@ -85,12 +85,9 @@ plt.show()
 plt.close()
 
 # plot the singular values
-print(opt_T.shape)
-print(opt_T)
 unfolded_T = opt_T.permute(0, 2, 1)
 unfolded_T = unfolded_T.reshape(-1, opt_T.shape[1])
 u_opt, s_opt, vh_opt = torch.linalg.svd(unfolded_T)
-print(s_opt)
 
 plt.figure()
 plt.scatter(range(len(s_opt)), s_opt.cpu().numpy())
@@ -99,55 +96,24 @@ plt.xlabel("Index")
 plt.title("Singular Values of the optimized tensor")
 plt.savefig("singular_tensT.pdf")
 plt.show()
-# plt.close()
+plt.close()
 
-# u, s, vh = torch.linalg.svd(conv_weight)
-# plt.scatter(range(len(s)), s.cpu().numpy())
-# plt.ylabel("Singular Value")
-# plt.xlabel("Index")
-# plt.title("Singular Values of the learnt weights")
-# plt.savefig("singular_weig.pdf")
-# plt.show()
-# plt.close()
 
-# s only has 6 non zero singular values
-# low_dim = (
-#     (u[:, :6] @ torch.diag(s[:6]))
-#     .reshape(model_weight.shape[0], model_weight.shape[2], -1)
-#     .permute(0, 2, 1)
-# )
-# low_dim = u[:, :6] @ torch.diag(s[:6])
-low_dim = u[:, :6] @ torch.diag(s[:6])  # @ vh[:6, :]
-V_r = torch.eye(low_dim.shape[1])
-# opt_Vr, opt_Tr, losses = optimize_T(
-#     low_dim / (low_dim.norm()) * train_M.norm(),
-#     V_r,
-#     train_M,
-#     lr=1e-1,  # conv: 1e-2, fc: 1e-1
-#     reg_coeff=5,  # conv: 1.0, fc: 0.5
-#     loss_type="sparse_inv",
-#     steps=1000,  # conv: 1000, fc: 10000
-# )
+V_r = torch.eye(model_weight.shape[1])
 opt_Vr, opt_Tr, losses = optimize_T(
     model_weight / (model_weight.norm()) * train_M.norm(),
     V_r,
     train_M,
     lr=1e-1,  # conv: 1e-2, fc: 1e-1
-    reg_coeff=5,  # conv: 1.0, fc: 0.5
-    loss_type="exact_inv",
-    # low_dim=True,
+    reg_coeff=20.0,  # conv: 1.0, fc: 0.5
+    loss_type="sparse",
     steps=1000,  # conv: 1000, fc: 10000
 )
-# print(opt_Tr.shape)
-# print(opt_Vr.shape)
-# # opt_Tr = u[:, :6] @ torch.diag(s[:6]) @ opt_Tr
-# # # opt_Tr = opt_Tr @ torch.diag(s[:6]) @ vh[:6, :]
+low_dim = u[:, :6] @ torch.diag(s[:6])  # @ vh[:6, :]
 low_Tr = low_dim.reshape(model_weight.shape[0], model_weight.shape[2], -1)
-opt_Tr = opt_Tr.reshape(model_weight.shape[0], model_weight.shape[2], -1)
-opt_Tr = opt_Tr.permute(0, 2, 1)
 # optimized
-fig = plot_heatmaps_h(low_Tr, train_M)
-plt.show()
+# fig = plot_heatmaps_h(low_Tr, train_M)
+# plt.show()
 fig = plot_heatmaps_h(opt_Tr, train_M, V_r)
 plt.savefig("heatmap_svd.pdf")
 plt.show()

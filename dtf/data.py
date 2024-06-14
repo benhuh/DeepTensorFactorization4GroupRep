@@ -360,6 +360,7 @@ class ArithmeticDataset(TensorDataset):
         # w = fixed weights
         # w = torch.Tensor(np.arange(6) / 100)
         torch.manual_seed(2)
+        # W in general is (in_channel, out_channel, kernel_size) (here in_channel = 1)
         w = torch.randn(M.shape[1], n_vectors) / np.sqrt(
             M.shape[1]
         )  # fix a random seed
