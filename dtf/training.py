@@ -214,7 +214,7 @@ def add_model_specific_args(parser: ArgumentParser) -> ArgumentParser:
         "--model",
         type=str,
         default="Deep_Tensor_Net",
-        choices=["Deep_Tensor_Net", "Deep_Tensor_Net_conv"],
+        choices=["Deep_Tensor_Net", "Deep_Tensor_Net_conv", "Deep_Tensor_Net_conv2d"],
     )
 
     parser.add_argument("--optim", choices=["SGD", "Adam"], default="SGD")
@@ -342,6 +342,7 @@ def get_hparams(*args, default_kwargs=None, parser=None) -> Namespace:
     if hparams.model in [
         "Deep_Tensor_Net",
         "Deep_Tensor_Net_conv",
+        "Deep_Tensor_Net_conv2d",
     ]:  # possibly not needed to include _conv
         hparams.custom_L2 = not hparams.manual_L2
         hparams.decomposition_type = "FC"

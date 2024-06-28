@@ -345,12 +345,23 @@ class ArithmeticDataset(TensorDataset):
         z = torch.einsum("ijk,bi,jc->bck", M.to_dense() + 0.0, x, y)
         return z
 
+    def get_output2d(self, M, xy):
+        x, y = xy[0], xy[1]
+        # z = torch.einsum('ijk,bi,bj->bk',M.to_dense()+0.0,x,y)
+        z = torch.einsum("iko,jlp,bij,kl->bop", M.to_dense() + 0.0, M.to_dense() + 0.0, x, y)
+        return z
+
     def _get_vectorized_data(self, M, total_batch=2.0, n_vectors=6, ortho=False):
         # M is the same as T in the model, it should have the convolution structure
         total_batch = int(total_batch * M.shape[0] ** 2)
         noise_level = 0.00
 
+        # 1d
         x, y = torch.randn(2, total_batch, M.shape[0])  # .split((1,1))
+
+        # 2d
+        x, y = torch.randn(2, total_batch, M.shape[0], M.shape[0])  # .split((1,1))
+
         x, y = (
             x / x.pow(2).sum(dim=1, keepdim=True).sqrt(),
             y / y.pow(2).sum(dim=1, keepdim=True).sqrt(),
@@ -372,7 +383,8 @@ class ArithmeticDataset(TensorDataset):
         # w = torch.tile(w, (x.shape[0], 1))
         # xy = torch.stack((x, w),dim=1)
         xy = [x, w]
-        z = self.get_output(M, xy)  # z is [72, 6, 6] and x is [72, 6]
+        # z = self.get_output(M, xy)  # z is [72, 6, 6] and x is [72, 6]
+        z = self.get_output2d(M, xy)  # z is [72, 6, 6] and x is [72, 6, 6]
         if noise_level > 0:
             noise = torch.randn_like(z)
             noise = noise / noise.pow(2).sum(dim=1, keepdim=True).sqrt()

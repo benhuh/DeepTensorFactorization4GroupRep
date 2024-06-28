@@ -9,6 +9,7 @@ from dtf.model import (
     get_model_parser,
     Deep_Tensor_Net,
     Deep_Tensor_Net_conv,
+    Deep_Tensor_Net_conv2d,
 )  # Transformer, Simple_MLP, Simple_MLP2, Simple_CNN, Simple_Resnet
 from dtf.logging_module import Logging_Module
 from dtf.lr_scheduler import Reduce_WeightDecayCoeff_OnPlateau
@@ -32,12 +33,20 @@ class LITmodel(LightningModule, Logging_Module):
 
         if isinstance(hparams, dict):
             hparams = Namespace(**hparams)
-        if hparams.model in ["Deep_Tensor_Net", "Deep_Tensor_Net_conv"]:
-            model_class = (
-                Deep_Tensor_Net
-                if hparams.model == "Deep_Tensor_Net"
-                else Deep_Tensor_Net_conv
-            )
+
+        if hparams.model in [
+            "Deep_Tensor_Net",
+            "Deep_Tensor_Net_conv",
+            "Deep_Tensor_Net_conv2d",
+        ]:
+            print(f"Using {hparams.model}: make sure this is the model you chose.")
+            if hparams.model == "Deep_Tensor_Net":
+                model_class = Deep_Tensor_Net
+            elif hparams.model == "Deep_Tensor_Net_conv":
+                model_class = Deep_Tensor_Net_conv
+            elif hparams.model == "Deep_Tensor_Net_conv2d":
+                model_class = Deep_Tensor_Net_conv2d
+
             model_args = dict(
                 N=hparams.tensor_width,
                 r=hparams.model_rank,
@@ -123,7 +132,7 @@ class LITmodel(LightningModule, Logging_Module):
             self.optimizers() and self.trainer.lr_scheduler_configs
         ):  # define new optimizers if not already set..  (if lr_scheduler_configs is None)
 
-            param_group_1 = {"params": self.model.T_param_list}
+            param_group_1 = {"params": [param for hypercube in self.model.hypercubes for param in hypercube.T_param_list]}
             param_group_2 = {
                 "params": self.model.conv_weight,
                 "lr": 1 * lr,
