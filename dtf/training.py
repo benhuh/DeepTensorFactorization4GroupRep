@@ -425,6 +425,7 @@ def get_log_name(hparams):  # , print_flag=False):
             "Deep_Tensor_Net",
             "Deep_Tensor_Net_Lie",
             "Deep_Tensor_Net_conv",
+            "Deep_Tensor_Net_conv2d",
         ]
         model_str = f"{hparams.decomposition_type}"
 

@@ -348,6 +348,7 @@ class ArithmeticDataset(TensorDataset):
     def get_output2d(self, M, xy):
         x, y = xy[0], xy[1]
         # z = torch.einsum('ijk,bi,bj->bk',M.to_dense()+0.0,x,y)
+        # print(f"M.shape = {(M.to_dense() + 0.0).shape}, x.shape = {x.shape}, y.shape = {y.shape}")
         z = torch.einsum("iko,jlp,bij,kl->bop", M.to_dense() + 0.0, M.to_dense() + 0.0, x, y)
         return z
 
@@ -357,10 +358,10 @@ class ArithmeticDataset(TensorDataset):
         noise_level = 0.00
 
         # 1d
-        x, y = torch.randn(2, total_batch, M.shape[0])  # .split((1,1))
+        # x, y = torch.randn(2, total_batch, M.shape[0])  # .split((1,1))
 
         # 2d
-        # x, y = torch.randn(2, total_batch, M.shape[0], M.shape[0])  # .split((1,1))
+        x, y = torch.randn(2, total_batch, M.shape[0], M.shape[0])  # .split((1,1))
 
         x, y = (
             x / x.pow(2).sum(dim=1, keepdim=True).sqrt(),
@@ -371,10 +372,18 @@ class ArithmeticDataset(TensorDataset):
         # w = fixed weights
         # w = torch.Tensor(np.arange(6) / 100)
         torch.manual_seed(2)
+
+        # 1d
         # W in general is (in_channel, out_channel, kernel_size) (here in_channel = 1)
-        w = torch.randn(M.shape[1], n_vectors) / np.sqrt(
+        # w = torch.randn(M.shape[1], n_vectors) / np.sqrt(
+        #     M.shape[1]
+        # )  # fix a random seed
+
+        # 2d
+        w = torch.randn(M.shape[1], M.shape[1]) / np.sqrt(
             M.shape[1]
-        )  # fix a random seed
+        )
+
         # you can choose if you want orthogonal weights or not
         if ortho:
             svd = torch.linalg.svd(w)
@@ -383,8 +392,8 @@ class ArithmeticDataset(TensorDataset):
         # w = torch.tile(w, (x.shape[0], 1))
         # xy = torch.stack((x, w),dim=1)
         xy = [x, w]
-        z = self.get_output(M, xy)  # z is [72, 6, 6] and x is [72, 6]
-        # z = self.get_output2d(M, xy)  # z is [72, 6, 6] and x is [72, 6, 6]
+        # z = self.get_output(M, xy)  # z is [72, 6, 6] and x is [72, 6]
+        z = self.get_output2d(M, xy)  # z is [72, 6, 6] and x is [72, 6, 6]
         if noise_level > 0:
             noise = torch.randn_like(z)
             noise = noise / noise.pow(2).sum(dim=1, keepdim=True).sqrt()

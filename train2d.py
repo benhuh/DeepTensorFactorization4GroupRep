@@ -252,8 +252,8 @@ def generate_figures(
 
 seed = 2
 train_frac = 61
-# task_name = "binary/sym3_xy_vec"
-task_name = "layer/FC_vec"
+task_name = "binary/sym3_xy_vec"
+# task_name = "layer/FC_vec"
 
 out, save_name = train(
     task_name,
@@ -274,29 +274,29 @@ out, save_name = train(
 # print("Trained: ", trained)
 # print("Desired: ", desired)
 
-model_weight = model.model.net_Weight.detach()
-conv_weight = model.model.conv_weight.detach()
-train_M = datamodule.train_dataset.M.to_dense() + 0.0
+# model_weight = model.model.net_Weight.detach()
+# conv_weight = model.model.conv_weight.detach()
+# train_M = datamodule.train_dataset.M.to_dense() + 0.0
 
-V = torch.eye(model.model.net_Weight.shape[1])
-opt_V, opt_T, losses = optimize_T(
-    model_weight / (model_weight.norm()) * train_M.norm(),
-    V,
-    train_M,
-    lr=1e-1,  # conv: 1e-2, fc: 1e-1
-    reg_coeff=2,  # conv: 1.0, fc: 0.5
-    loss_type="sparse_inv",
-    steps=1000,  # conv: 1000, fc: 10000
-)
+# V = torch.eye(model.model.net_Weight.shape[1])
+# opt_V, opt_T, losses = optimize_T(
+#     model_weight / (model_weight.norm()) * train_M.norm(),
+#     V,
+#     train_M,
+#     lr=1e-1,  # conv: 1e-2, fc: 1e-1
+#     reg_coeff=2,  # conv: 1.0, fc: 0.5
+#     loss_type="sparse_inv",
+#     steps=1000,  # conv: 1000, fc: 10000
+# )
 
-# original
-fig = plot_heatmaps_h(model_weight, train_M)
-plt.show()
-plt.close()
+# # original
+# fig = plot_heatmaps_h(model_weight, train_M)
+# plt.show()
+# plt.close()
 
-# optimized
-fig = plot_heatmaps_h(opt_T, train_M, opt_V)
-plt.show()
-plt.close()
-# import pdb; pdb.set_trace()
-# XYZ = generate_figures(model, datamodule, save_name, skip=15, t_init=0, show_steps=5, plot_all_weights=True, ABC_or_A = 'ABC')
+# # optimized
+# fig = plot_heatmaps_h(opt_T, train_M, opt_V)
+# plt.show()
+# plt.close()
+# # import pdb; pdb.set_trace()
+# # XYZ = generate_figures(model, datamodule, save_name, skip=15, t_init=0, show_steps=5, plot_all_weights=True, ABC_or_A = 'ABC')

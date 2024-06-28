@@ -316,6 +316,14 @@ class Deep_Tensor_Net_conv2d(Deep_Tensor_Net):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        N, r = kwargs.get("N", None), kwargs.get("r", None)
+        init_scale = kwargs.get("init_scale", 1)
+        layer_type = kwargs.get("layer_type", None)
+        decomposition_type = kwargs.get("decomposition_type", 'FC')
+        self.hypercubes = nn.ModuleList([HyperCube(N, r, init_scale, decomposition_type, layer_type), HyperCube(N, r, init_scale, decomposition_type, layer_type)])
+
+        W = self.net_Weight  # JUST TO INITIALIZE.
+
         init_scale = kwargs.get("init_scale", 1)
         n_vectors = kwargs.get("n_vectors", 1)
         # convolution weights
@@ -331,8 +339,8 @@ class Deep_Tensor_Net_conv2d(Deep_Tensor_Net):
         if x.dtype == torch.int64:  # x is tensor of indices
             out = self.index_select(W, x)
         else:
-            print(len(W))
             if len(W) > 1:
+                # print(f"W[0]: {W[0].shape}, W[1]: {W[1].shape}, x: {x.shape}, self.conv_weight: {self.conv_weight.shape}")
                 out = torch.einsum("iko,jlp,bij,kl->bop", W[0], W[1], x, self.conv_weight)
             else:
                 raise ValueError("Deep_Tensor_Net_conv2d: read_from_Tensor: W is NOT tuple of tensors. This should be used with Deep_Tensor_Net_conv.")
