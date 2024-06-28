@@ -274,11 +274,11 @@ out, save_name = train(
 # print("Trained: ", trained)
 # print("Desired: ", desired)
 
-model_weight = model.model.net_Weight.detach()
+model_weight = model.model.net_Weight[0].detach()
 conv_weight = model.model.conv_weight.detach()
 train_M = datamodule.train_dataset.M.to_dense() + 0.0
 
-V = torch.eye(model.model.net_Weight.shape[1])
+V = torch.eye(model_weight.shape[1])
 opt_V, opt_T, losses = optimize_T(
     model_weight / (model_weight.norm()) * train_M.norm(),
     V,
