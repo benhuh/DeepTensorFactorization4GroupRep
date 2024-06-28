@@ -207,6 +207,8 @@ class Deep_Tensor_Net(Base_Model):
 
         self.hypercubes = nn.ModuleList([HyperCube(N, r, init_scale, decomposition_type, layer_type)])
 
+        W = self.net_Weight  # JUST TO INITIALIZE.
+
     def evaluate(self, data, *args, **kwargs):
         loss, acc, out, (other_outputs, x, out, label) = super().evaluate(
             data, *args, **kwargs
@@ -262,7 +264,7 @@ class Deep_Tensor_Net(Base_Model):
             if kwargs.get("train_or_test") == "train":
                 W = self.net_Weight
             else:
-                W = self.net_Weight  # existing weight
+                W = self._net_Weight  # existing weight
         out = self.read_from_Tensor(W, x)
         return out, (W,)
 
@@ -290,27 +292,26 @@ class Deep_Tensor_Net(Base_Model):
 
     @property
     def factor_list(self):
-        return  (hypercube.factor_list for hypercube in self.hypercubes)
+        return  list(hypercube.factor_list for hypercube in self.hypercubes)
         # return self.T_param_list
 
     @property
     def T_list_no_grad(self):
-        return (hypercube.T_list_no_grad for hypercube in self.hypercubes)
+        return list(hypercube.T_list_no_grad for hypercube in self.hypercubes)
         # return [T.detach() for T in self.factor_list]
 
     @property
     def net_Weight(self): # returns a tuple of net_Weight tensors
-        self._net_Weight = (hypercube.net_Weight for hypercube in self.hypercubes)
-        # self._net_Weight = tensor_prod(self.factor_list, self.einsum_str)
+        # return (hypercube.net_Weight for hypercube in self.hypercubes)
+        self._net_Weight = list(hypercube.net_Weight for hypercube in self.hypercubes)
         return self._net_Weight  # .permute(2,0,1)
 
     def get_svd(self):
-        return torch.stack([hypercube.get_svd() for hypercube in self.hypercubes])
+        return list([hypercube.get_svd() for hypercube in self.hypercubes])
         # return compute_svd_all(self.factor_list, self.idx_appearance_dict)
 
     def get_imbalance2(self):
-        return sum(hypercube.get_imbalance2() for hypercube in self.hypercubes)
-        # return compute_imbalance2(self.T_list_no_grad)
+        return list(hypercube.get_imbalance2() for hypercube in self.hypercubes)
 
     def manual_L2_loss(self):
         return sum(hypercube.manual_L2_loss() for hypercube in self.hypercubes)
@@ -338,6 +339,7 @@ class Deep_Tensor_Net_conv(Deep_Tensor_Net):
             self.conv_weight = nn.Parameter(init_scale * torch.randn(6, n_vectors))
 
     def read_from_Tensor(self, W, x):
+        W = W[0] # to be fixed
         if x.dtype == torch.int64:  # x is tensor of indices
             out = self.index_select(W, x)
         else:
@@ -351,8 +353,7 @@ class Deep_Tensor_Net_conv(Deep_Tensor_Net):
             if isinstance(W, tuple):
                 raise ValueError("Deep_Tensor_Net: read_from_Tensor: W is tuple of tensors. This should be used with Deep_Tensor_Net_conv2d.")
             else:
-                print(W)
-                print(W.shape, x.shape, self.conv_weight.shape)
+                # print(W.shape, x.shape, self.conv_weight.shape)
                 out = torch.einsum("ijk,bi,jc->bck", W, x, self.conv_weight)
         return out
 

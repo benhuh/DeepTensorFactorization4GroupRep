@@ -360,7 +360,7 @@ class ArithmeticDataset(TensorDataset):
         x, y = torch.randn(2, total_batch, M.shape[0])  # .split((1,1))
 
         # 2d
-        x, y = torch.randn(2, total_batch, M.shape[0], M.shape[0])  # .split((1,1))
+        # x, y = torch.randn(2, total_batch, M.shape[0], M.shape[0])  # .split((1,1))
 
         x, y = (
             x / x.pow(2).sum(dim=1, keepdim=True).sqrt(),
@@ -383,8 +383,8 @@ class ArithmeticDataset(TensorDataset):
         # w = torch.tile(w, (x.shape[0], 1))
         # xy = torch.stack((x, w),dim=1)
         xy = [x, w]
-        # z = self.get_output(M, xy)  # z is [72, 6, 6] and x is [72, 6]
-        z = self.get_output2d(M, xy)  # z is [72, 6, 6] and x is [72, 6, 6]
+        z = self.get_output(M, xy)  # z is [72, 6, 6] and x is [72, 6]
+        # z = self.get_output2d(M, xy)  # z is [72, 6, 6] and x is [72, 6, 6]
         if noise_level > 0:
             noise = torch.randn_like(z)
             noise = noise / noise.pow(2).sum(dim=1, keepdim=True).sqrt()

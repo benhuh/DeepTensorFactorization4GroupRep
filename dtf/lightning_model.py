@@ -251,7 +251,7 @@ class LITmodel(LightningModule, Logging_Module):
                 * (self.model.conv_weight.norm(2) ** 2)
             )
             loss_train = loss_reconst + reg_loss + reg_loss_1
-            info["loss/reg"] = reg_loss.item() / self.model._net_Weight.numel()
+            info["loss/reg"] = reg_loss.item() / sum(W.numel() for W in self.model._net_Weight)
         else:
             loss_train = loss_reconst
 

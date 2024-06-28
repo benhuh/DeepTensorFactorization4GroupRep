@@ -71,13 +71,13 @@ class Logging_Module():
     def log_svd_factors(self, max_num=10, weight_norm=None):
         with torch.no_grad():
             logs={}
-            svd_dict = self.model.get_svd()
-
-            if len(svd_dict)>0:
-                for idx, err in svd_dict.items():
-                    for j, s in enumerate(err['sig']):
-                        if j<max_num:
-                            logs[f"singular_val/{idx}/{j}"] = s.item()
+            svd_dict_list = self.model.get_svd()
+            for i, svd_dict in enumerate(svd_dict_list):
+                if len(svd_dict)>0:
+                    for idx, err in svd_dict.items():
+                        for j, s in enumerate(err['sig']):
+                            if j<max_num:
+                                logs[f"singular_val/{i}/{idx}/{j}"] = s.item()
 
             return logs
 
@@ -85,39 +85,40 @@ class Logging_Module():
     def log_imbalance2(self, max_num=10, svd=True, weight_norm=None):
         with torch.no_grad():
             logs={}
-            imbalance2 = self.model.get_imbalance2()
+            imbalance2_list = self.model.get_imbalance2()
+            for i, imbalance2 in enumerate(imbalance2_list):
+                if len(imbalance2)>0:
+                    norm_2_sum = 0
+                    numel_sum = 0
 
-            if len(imbalance2)>0:
-                norm_2_sum = 0
-                numel_sum = 0
+                    for idx, err in imbalance2.items():
+                        norm = err.norm().item()
+                        numel = err.numel()
+                        norm_2_sum += norm**2
+                        numel_sum += numel
 
-                for idx, err in imbalance2.items():
-                    norm = err.norm().item()
-                    numel = err.numel()
-                    norm_2_sum += norm**2
-                    numel_sum += numel
+                    imbalance2_mean  = (norm_2_sum/numel_sum)**0.5
 
-                logs[f"imbalance2/mean"]  = (norm_2_sum/numel_sum)**0.5
-
-                if weight_norm is not None:
-                    logs[f"imbalance2/mean"] /= weight_norm ** 4
-
+                    if weight_norm is not None:
+                         imbalance2_mean/= weight_norm ** 4
+                    logs[f"imbalance2/{i}/mean"] = imbalance2_mean
             return logs
 
 
 
     def record_param_grad(self):
-        if getattr(self,'netW_hist',None) is None:
-            self.netW_hist = []
-        self.netW_hist.append(self.model._net_Weight.detach()+0.0)
+        pass
+        # if getattr(self,'netW_hist',None) is None:
+        #     self.netW_hist = []
+        # self.netW_hist.append(self.model._net_Weight.detach()+0.0)
 
-        if getattr(self,'w_hist',None) is None:
-            self.w_hist = []
-        w = [p.detach() for p in self.model.factor_list]
-        w_shape = [p.shape for p in w]
-        if check_all_equal(w_shape):
-            w = torch.stack(w)
-        self.w_hist.append(w)
+        # if getattr(self,'w_hist',None) is None:
+        #     self.w_hist = []
+        # w = [p.detach() for p in self.model.factor_list]
+        # w_shape = [p.shape for p in w]
+        # if check_all_equal(w_shape):
+        #     w = torch.stack(w)
+        # self.w_hist.append(w)
 
 
     @staticmethod
@@ -162,7 +163,8 @@ class Logging_Module():
             logs[f"norm/{name_}"] = norm
 
         logs["norm/mean"] = (norm_2_sum/numel_sum)**0.5
-        logs["norm/NetW"] = self.model._net_Weight.norm().item()  / np.sqrt(self.model._net_Weight.numel())
+        for i in range(len(self.model._net_Weight)):
+            logs[f"norm/NetW {i}"] = self.model._net_Weight[i].norm().item()  / np.sqrt(self.model._net_Weight[i].numel())
         logs["norm/convW"] = self.model.conv_weight.norm().item()  / np.sqrt(self.model.conv_weight.numel())
         return logs
 
@@ -171,17 +173,21 @@ def check_all_equal(list):
 
 
 
-def compute_AA(factor_list_opt, factor_norm, imshow=False):
-    AA_all = []
-    for A in factor_list_opt:
-        AAt = []
-        AtA = []
-        for A_ in A:
-            AAt.append(A_@A_.T)
-            AtA.append(A_.T@A_)
-        AA_all.append(torch.stack(AAt).sum(0))
-        AA_all.append(torch.stack(AtA).sum(0))
-    AA_all = torch.stack(AA_all)
+def compute_AA(factor_list_opt_list, factor_norm, imshow=False):
+    AA_all_all = []
+    for factor_list_opt in factor_list_opt_list:
+        AA_all = []
+        for A in factor_list_opt:
+            AAt = []
+            AtA = []
+            for A_ in A:
+                AAt.append(A_@A_.T)
+                AtA.append(A_.T@A_)
+            AA_all.append(torch.stack(AAt).sum(0))
+            AA_all.append(torch.stack(AtA).sum(0))
+        AA_all = torch.stack(AA_all)
+        AA_all_all.append(AA_all)
+    AA_all_all = torch.stack(AA_all_all)
 
     diag_mean = AA_all.diagonal(dim1=1,dim2=2).mean()
     orth_loss = AA_all - diag_mean*torch.eye(AA_all[0].shape[0], device = AA_all.device)
@@ -190,12 +196,13 @@ def compute_AA(factor_list_opt, factor_norm, imshow=False):
     return AA_all, orth_loss_norm / factor_norm **2
 
 
-def compute_individual_AA(factor_list_opt, factor_norm):
+def compute_individual_AA(factor_list_opt_list, factor_norm):
     orth_loss_all = []
-    for A in factor_list_opt:
-        for A_ in A:
-            orth_loss = orthogonal_loss(A_)
-            orth_loss_all.append(orth_loss) # normalize by diag_mean
+    for factor_list_opt in factor_list_opt_list:
+        for A in factor_list_opt:
+            for A_ in A:
+                orth_loss = orthogonal_loss(A_)
+                orth_loss_all.append(orth_loss) # normalize by diag_mean
 
     orth_loss_indiv_norm = torch.stack(orth_loss_all).norm() / sum([A.numel() for A in orth_loss_all])**0.5
 
